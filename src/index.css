@@ -1,58 +1,82 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-sans: "Inter", "Noto Sans SC", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Libre Baskerville", serif;
+  --font-mono: "JetBrains Mono", monospace;
 }
 
 body {
-  @apply bg-[#F8F7F5] text-gray-500 antialiased;
+  @apply bg-white text-gray-900 antialiased;
+  font-family: var(--font-sans);
 }
 
-/* Custom scrollbar for chat */
+/* Custom scrollbar for white theme */
 ::-webkit-scrollbar {
-  width: 4px;
+  width: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: #F9FAFB;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-pink-50 rounded-full;
+  background: #E5E7EB;
+  border-radius: 10px;
 }
 
-@keyframes waterSlide {
-  0% { 
-    transform: translateY(-20px) scale(0.8); 
-    opacity: 0; 
-  }
-  15% { 
-    opacity: 0.8; 
-  }
-  85% { 
-    opacity: 0.8; 
-  }
-  100% { 
-    transform: translateY(200px) scale(1.1); 
-    opacity: 0; 
-  }
+@keyframes shake {
+  0% { transform: rotate(0deg); }
+  25% { transform: rotate(-1.5deg); }
+  50% { transform: rotate(0deg); }
+  75% { transform: rotate(1.5deg); }
+  100% { transform: rotate(0deg); }
+}
+
+.animate-shake {
+  animation: shake 0.25s infinite ease-in-out;
+}
+
+.photo-filter-bw img {
+  filter: grayscale(100%);
+}
+
+@keyframes rain {
+  0% { transform: translateY(-100px); }
+  100% { transform: translateY(844px); }
 }
 
 .rain-drop {
   position: absolute;
-  background: linear-gradient(to bottom, 
-    rgba(255, 255, 255, 0.1) 0%, 
-    rgba(255, 255, 255, 0.4) 50%, 
-    rgba(255, 255, 255, 0.9) 100%
-  );
-  width: 4px;
-  height: 40px;
-  animation: waterSlide linear infinite;
-  pointer-events: none;
-  border-radius: 2px 2px 10px 10px;
-  box-shadow: 
-    -1px 1px 2px rgba(0, 0, 0, 0.05),
-    inset 1px -1px 2px rgba(255, 255, 255, 0.6);
-  filter: blur(0.5px);
+  background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.8));
+  box-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+  border-radius: 999px;
+  animation: rain linear infinite;
+}
+
+@keyframes snow {
+  0% { transform: translateY(-20px) translateX(0); }
+  100% { transform: translateY(844px) translateX(var(--drift)); }
+}
+
+.snow-flake {
+  position: absolute;
+  background: white;
+  border-radius: 50%;
+  filter: blur(1px);
+  animation: snow linear infinite;
+}
+
+@keyframes sakura {
+  0% { transform: translateY(-20px) translateX(0) rotate(var(--rotation)); }
+  100% { transform: translateY(844px) translateX(var(--drift)) rotate(calc(var(--rotation) + 360deg)); }
+}
+
+.sakura-petal {
+  position: absolute;
+  background: rgba(255, 220, 230, 0.6);
+  border-radius: 50% 0 50% 50%;
+  animation: sakura linear infinite;
+  box-shadow: 0 0 2px rgba(255, 255, 255, 0.5);
 }
