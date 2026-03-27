@@ -42,9 +42,10 @@ interface PhoneAppProps {
   onClose: () => void;
   appState: any;
   updateState: (key: string, value: any) => void;
+  isFullscreen?: boolean;
 }
 
-export default function PhoneApp({ onClose, appState, updateState }: PhoneAppProps) {
+export default function PhoneApp({ onClose, appState, updateState, isFullscreen }: PhoneAppProps) {
   const [activeTab, setActiveTab] = useState<'history' | 'contacts' | 'dialer'>('history');
   const [dialedNumber, setDialedNumber] = useState('');
   const [isCalling, setIsCalling] = useState(false);
@@ -228,9 +229,11 @@ export default function PhoneApp({ onClose, appState, updateState }: PhoneAppPro
 
       {/* Header */}
       <div className="px-6 py-4 flex items-center justify-between">
-        <button onClick={onClose} className="p-2 -ml-2 hover:bg-black/5 rounded-full transition-colors">
-          <ChevronLeft className="w-6 h-6" />
-        </button>
+        {!isFullscreen && (
+          <button onClick={onClose} className="p-2 -ml-2 hover:bg-black/5 rounded-full transition-colors">
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+        )}
         <h1 className="text-lg font-bold uppercase tracking-widest">
           {activeTab === 'history' ? '最近通话' : activeTab === 'contacts' ? '通讯录' : '拨号'}
         </h1>

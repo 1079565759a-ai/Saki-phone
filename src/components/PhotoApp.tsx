@@ -49,9 +49,10 @@ interface AICharacter {
 interface PhotoAppProps {
   onClose: () => void;
   language: string;
+  isFullscreen?: boolean;
 }
 
-const PhotoApp: React.FC<PhotoAppProps> = ({ onClose, language }) => {
+const PhotoApp: React.FC<PhotoAppProps> = ({ onClose, language, isFullscreen }) => {
   const [albums, setAlbums] = useState<Album[]>(() => {
     const saved = localStorage.getItem('photo_app_albums');
     return saved ? JSON.parse(saved) : [

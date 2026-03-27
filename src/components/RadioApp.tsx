@@ -21,11 +21,12 @@ import { cn } from '../utils/cn';
 interface RadioAppProps {
   onClose: () => void;
   language?: string;
+  isFullscreen?: boolean;
 }
 
 type Tab = 'home' | 'together' | 'profile';
 
-const RadioApp: React.FC<RadioAppProps> = ({ onClose, language = 'zh' }) => {
+const RadioApp: React.FC<RadioAppProps> = ({ onClose, language = 'zh', isFullscreen }) => {
   const [activeTab, setActiveTab] = useState<Tab>('home');
 
   const isEn = language === 'en';
@@ -192,9 +193,11 @@ const RadioApp: React.FC<RadioAppProps> = ({ onClose, language = 'zh' }) => {
     >
       {/* Header */}
       <div className="px-6 pt-12 pb-4 flex items-center justify-between border-b border-pink-50 bg-white/50 backdrop-blur-md">
-        <button onClick={onClose} className="p-2 -ml-2 text-pink-200 hover:text-pink-300 transition-colors">
-          <ArrowLeft className="w-6 h-6" />
-        </button>
+        {!isFullscreen && (
+          <button onClick={onClose} className="p-2 -ml-2 text-pink-200 hover:text-pink-300 transition-colors">
+            <ArrowLeft className="w-6 h-6" />
+          </button>
+        )}
         <h1 className="text-sm font-serif font-bold tracking-widest uppercase text-gray-400">Radio</h1>
         <div className="w-10" />
       </div>

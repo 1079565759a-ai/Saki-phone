@@ -146,7 +146,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onClose }) => {
       <div className="p-8 border-t border-gray-50">
         <div className="flex items-center justify-between">
           <span className="text-[7px] font-mono text-gray-200 uppercase tracking-widest">Build.ID: 20260326.1540</span>
-          <span className="text-[7px] font-mono text-gray-200 uppercase tracking-widest">GalaGame.OS</span>
+          <span className="text-[7px] font-mono text-gray-200 uppercase tracking-widest">樱咲Gal机.OS</span>
         </div>
       </div>
     </motion.div>

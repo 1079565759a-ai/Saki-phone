@@ -10,6 +10,26 @@
 body {
   @apply bg-white text-gray-900 antialiased;
   font-family: var(--font-sans);
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@utility mt-safe {
+  margin-top: env(safe-area-inset-top);
+}
+
+@utility mb-safe {
+  margin-bottom: env(safe-area-inset-bottom);
 }
 
 /* Custom scrollbar for white theme */
@@ -44,7 +64,7 @@ body {
 
 @keyframes rain {
   0% { transform: translateY(-100px); }
-  100% { transform: translateY(844px); }
+  100% { transform: translateY(100vh); }
 }
 
 .rain-drop {
@@ -57,7 +77,7 @@ body {
 
 @keyframes snow {
   0% { transform: translateY(-20px) translateX(0); }
-  100% { transform: translateY(844px) translateX(var(--drift)); }
+  100% { transform: translateY(100vh) translateX(var(--drift)); }
 }
 
 .snow-flake {
@@ -70,7 +90,7 @@ body {
 
 @keyframes sakura {
   0% { transform: translateY(-20px) translateX(0) rotate(var(--rotation)); }
-  100% { transform: translateY(844px) translateX(var(--drift)) rotate(calc(var(--rotation) + 360deg)); }
+  100% { transform: translateY(100vh) translateX(var(--drift)) rotate(calc(var(--rotation) + 360deg)); }
 }
 
 .sakura-petal {

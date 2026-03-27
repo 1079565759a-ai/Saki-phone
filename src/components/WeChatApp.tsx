@@ -36,7 +36,8 @@ import {
   RotateCcw,
   Quote,
   MoreVertical,
-  Scissors
+  Scissors,
+  Sparkles
 } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 import { clsx, type ClassValue } from 'clsx';
@@ -297,54 +298,65 @@ const defaultState: InsState = {
 };
 
 // --- Main App Component ---
-export default function InsApp({ onClose, language: propLanguage }: { onClose: () => void, language?: string }) {
+export default function InsApp({ onClose, appState, updateState, setIsCharOpen }: { onClose: () => void, appState: any, updateState: (key: string, value: any) => void, setIsCharOpen: (v: boolean) => void }) {
   const [state, setState] = useState<InsState>(() => {
     const saved = localStorage.getItem('ins_state');
     if (saved) {
       try { 
         const parsed = JSON.parse(saved);
-        return { ...defaultState, ...parsed, language: propLanguage || parsed.language || 'zh' }; 
-      } catch (e) { return { ...defaultState, language: propLanguage || 'zh' }; }
+        return { ...defaultState, ...parsed, language: appState.language || parsed.language || 'zh' }; 
+      } catch (e) { return { ...defaultState, language: appState.language || 'zh' }; }
     }
-    return { ...defaultState, language: propLanguage || 'zh' };
+    return { ...defaultState, language: appState.language || 'zh' };
   });
 
   useEffect(() => {
-    if (propLanguage && propLanguage !== state.language) {
-      updateState({ language: propLanguage as 'zh' | 'en' });
+    if (appState.language && appState.language !== state.language) {
+      updateInsState({ language: appState.language as 'zh' | 'en' });
     }
-  }, [propLanguage]);
+  }, [appState.language]);
 
   useEffect(() => {
     localStorage.setItem('ins_state', JSON.stringify(state));
   }, [state]);
 
-  // Simulate proactive posts from AI
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const activeAIs = state.aiDatabase.filter(ai => ai.chatSettings?.activeMessaging);
-      if (activeAIs.length > 0 && Math.random() > 0.7) {
-        const randomAI = activeAIs[Math.floor(Math.random() * activeAIs.length)];
-        const newPost = {
-          id: `post-${Date.now()}`,
-          authorId: randomAI.id,
-          content: `Feeling inspired today! ✨ #aesthetic #${randomAI.nickname}`,
-          images: [`https://picsum.photos/seed/${Date.now()}/600/600`],
-          timestamp: new Date().toISOString(),
-          likes: Math.floor(Math.random() * 50)
-        };
-        updateState({ posts: [newPost, ...state.posts] });
-      }
-    }, 60000); // Check every minute
-    return () => clearInterval(interval);
-  }, [state.aiDatabase, state.posts]);
-
-  const updateState = (updates: Partial<InsState>) => {
+  const updateInsState = (updates: Partial<InsState>) => {
     setState(prev => ({ ...prev, ...updates }));
   };
 
   const [activeTab, setActiveTab] = useState<'feed' | 'contacts' | 'chat' | 'profile'>('chat');
   const [activeChat, setActiveChat] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (appState.charCharacters) {
+      const newContacts = [...state.myContacts];
+      let changed = false;
+      appState.charCharacters.forEach((char: any) => {
+        if (!newContacts.some(c => c.aiId === char.id)) {
+          newContacts.push({ aiId: char.id, groupId: 'default' });
+          changed = true;
+        }
+      });
+      if (changed) {
+        updateInsState({ myContacts: newContacts });
+      }
+    }
+  }, [appState.charCharacters]);
+
+  useEffect(() => {
+    if (appState.selectedCharId) {
+      // Ensure the character is in contacts
+      if (!state.myContacts.some(c => c.aiId === appState.selectedCharId)) {
+        updateInsState({
+          myContacts: [...state.myContacts, { aiId: appState.selectedCharId, groupId: 'default' }]
+        });
+      }
+      setActiveChat(appState.selectedCharId);
+      setActiveTab('chat');
+      updateState('selectedCharId', null);
+    }
+  }, [appState.selectedCharId]);
+
   const t = translations[state.language] || translations.zh;
 
   return (
@@ -358,16 +370,19 @@ export default function InsApp({ onClose, language: propLanguage }: { onClose: (
         <ChatRoom 
           contactId={activeChat} 
           state={state} 
-          updateState={updateState} 
+          updateState={updateInsState} 
           onBack={() => setActiveChat(null)} 
+          appState={appState}
+          updateAppState={updateState}
+          setIsCharOpen={setIsCharOpen}
         />
       ) : (
         <>
           <div className="flex-1 overflow-y-auto pb-[80px]">
-            {activeTab === 'chat' && <Directs state={state} updateState={updateState} onOpenChat={setActiveChat} onClose={onClose} />}
-            {activeTab === 'contacts' && <Following state={state} updateState={updateState} />}
-            {activeTab === 'feed' && <Feed state={state} updateState={updateState} />}
-            {activeTab === 'profile' && <Profile state={state} updateState={updateState} />}
+            {activeTab === 'chat' && <Directs state={state} updateState={updateInsState} onOpenChat={setActiveChat} onClose={onClose} appState={appState} />}
+            {activeTab === 'contacts' && <Following state={state} updateState={updateInsState} />}
+            {activeTab === 'feed' && <Feed state={state} updateState={updateInsState} />}
+            {activeTab === 'profile' && <Profile state={state} updateState={updateInsState} />}
           </div>
           
           {/* Bottom Navigation */}
@@ -405,11 +420,30 @@ function TabButton({ icon: Icon, isActive, onClick, label }: { icon: any, isActi
 }
 
 // --- 1. Directs (Chat List & Search to Add) ---
-function Directs({ state, updateState, onOpenChat, onClose }: { state: InsState, updateState: (s: Partial<InsState>) => void, onOpenChat: (id: string) => void, onClose: () => void }) {
+function Directs({ state, updateState, onOpenChat, onClose, appState }: { state: InsState, updateState: (s: Partial<InsState>) => void, onOpenChat: (id: string) => void, onClose: () => void, appState: any }) {
   const [searchQuery, setSearchQuery] = useState('');
   const t = translations[state.language] || translations.zh;
 
-  const searchResult = state.aiDatabase.find(ai => 
+  const allAIs = [...state.aiDatabase, ...(appState.charCharacters || []).map((c: any) => ({
+    id: c.id,
+    insId: c.id,
+    avatar: c.avatar,
+    nickname: c.name,
+    persona: c.persona,
+    gender: 'other',
+    chatSettings: {
+      backgroundImage: '',
+      userBubbleColor: '#111827',
+      aiBubbleColor: '#F3F4F6',
+      customCSS: '',
+      enableMinimaxVoice: false,
+      perceiveTimeWeather: true,
+      activeMessaging: false,
+      activeMessagingFrequency: 'medium'
+    }
+  }))];
+
+  const searchResult = allAIs.find(ai => 
     ai.insId.toLowerCase().includes(searchQuery.toLowerCase()) || 
     ai.nickname.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -423,7 +457,7 @@ function Directs({ state, updateState, onOpenChat, onClose }: { state: InsState,
     }
   };
 
-  const discoverableAIs = state.aiDatabase.filter(ai => !state.myContacts.some(c => c.aiId === ai.id));
+  const discoverableAIs = allAIs.filter(ai => !state.myContacts.some(c => c.aiId === ai.id));
 
   return (
     <div className="flex flex-col h-full bg-white">
@@ -491,7 +525,7 @@ function Directs({ state, updateState, onOpenChat, onClose }: { state: InsState,
                 <h3 className="text-[9px] font-bold text-gray-400 mb-3 uppercase tracking-[0.15em]">{t.messages}</h3>
                 <div className="space-y-1">
                   {state.myContacts.map(contact => {
-                    const ai = state.aiDatabase.find(a => a.id === contact.aiId);
+                    const ai = allAIs.find(a => a.id === contact.aiId);
                     if (!ai) return null;
                     const chat = state.chats.find(c => c.contactId === ai.id);
                     const lastMsg = chat?.messages[chat.messages.length - 1];
@@ -558,8 +592,35 @@ function Directs({ state, updateState, onOpenChat, onClose }: { state: InsState,
 }
 
 // --- Chat Room ---
-function ChatRoom({ contactId, state, updateState, onBack }: { contactId: string, state: InsState, updateState: (s: Partial<InsState>) => void, onBack: () => void }) {
-  const contact = state.aiDatabase.find(c => c.id === contactId);
+function ChatRoom({ contactId, state, updateState, onBack, appState, updateAppState, setIsCharOpen }: { 
+  contactId: string, 
+  state: InsState, 
+  updateState: (s: Partial<InsState>) => void, 
+  onBack: () => void,
+  appState: any,
+  updateAppState: (k: string, v: any) => void,
+  setIsCharOpen: (v: boolean) => void
+}) {
+  const allAIs = [...state.aiDatabase, ...(appState.charCharacters || []).map((c: any) => ({
+    id: c.id,
+    insId: c.id,
+    avatar: c.avatar,
+    nickname: c.name,
+    persona: c.persona,
+    gender: 'other',
+    chatSettings: {
+      backgroundImage: '',
+      userBubbleColor: '#111827',
+      aiBubbleColor: '#F3F4F6',
+      customCSS: '',
+      enableMinimaxVoice: false,
+      perceiveTimeWeather: true,
+      activeMessaging: false,
+      activeMessagingFrequency: 'medium'
+    }
+  }))];
+
+  const contact = allAIs.find(c => c.id === contactId);
   const chat = state.chats.find(c => c.contactId === contactId) || { contactId, messages: [] };
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -578,10 +639,25 @@ function ChatRoom({ contactId, state, updateState, onBack }: { contactId: string
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [selectedCharId, setSelectedCharId] = useState<string | null>(appState.selectedCharId);
+  const [selectedMaskId, setSelectedMaskId] = useState<string | null>(appState.selectedMaskId);
+
+  useEffect(() => {
+    updateAppState('selectedCharId', selectedCharId);
+  }, [selectedCharId]);
+
+  useEffect(() => {
+    updateAppState('selectedMaskId', selectedMaskId);
+  }, [selectedMaskId]);
   const recognitionRef = useRef<any>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const t = translations[state.language] || translations.zh;
+
+  const charCharacters = appState.charCharacters || [];
+  const personaMasks = appState.personaMasks || [];
+  const activeChar = charCharacters.find((c: any) => c.id === selectedCharId);
+  const activeMask = personaMasks.find((m: any) => m.id === selectedMaskId);
 
   const defaultChatSettings: ChatSettings = {
     backgroundImage: '',
@@ -657,34 +733,49 @@ function ChatRoom({ contactId, state, updateState, onBack }: { contactId: string
     updateState({ chats: newChats });
     setInputText('');
     setQuotedMsgId(null);
-    setIsTyping(true);
     setIsMoreMenuOpen(false);
+    // AI response is now triggered only by handleAIReply (Sparkles button)
+  };
 
+  const handleAIReply = async () => {
+    if (isTyping) return;
+    
+    let textToUse = inputText.trim();
+    const currentInput = textToUse;
+    
+    let newMessages = chat.messages;
+    
+    // If there's input, add it to the chat first
+    if (currentInput) {
+      const newUserMsg = {
+        id: Date.now().toString(),
+        role: 'user' as const,
+        text: currentInput,
+        timestamp: new Date().toISOString(),
+        type: 'text' as const,
+        quotedMessageId: quotedMsgId || undefined
+      };
+      newMessages = [...chat.messages, newUserMsg];
+      const newChats = state.chats.map(c => c.contactId === contactId ? { ...c, messages: newMessages } : c);
+      updateState({ chats: newChats });
+      setInputText('');
+      setQuotedMsgId(null);
+    }
+
+    setIsTyping(true);
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const history = newMessages.slice(-10).map(m => `${m.role === 'user' ? 'User' : (activeChar?.name || contact?.nickname)}: ${m.text}`).join('\n');
       
-      let contextInfo = '';
-      if (chatSettings.perceiveTimeWeather) {
-        const now = new Date();
-        contextInfo = `\nCurrent context:
-- Time: ${now.toLocaleString()}
-- Weather: Sunny, 22°C (Simulated)`;
-      }
-
-      const systemInstruction = `You are chatting on a high-end minimalist AI companion app.
-Your name: ${contact.nickname}
-Your gender: ${contact.gender}
-Your persona: ${contact.persona}
-User's name: ${state.myProfile.nickname}
-User's persona: ${state.myProfile.persona}${contextInfo}
-
-Keep responses concise, thoughtful, and elegant. Avoid excessive emojis.
-If the user sends a "pat" (拍一拍), respond with something fitting your persona.
-If the user sends a "takeout" or "transfer", react appropriately based on your persona.`;
+      const systemInstruction = `You are ${activeChar?.name || contact?.nickname}. 
+Persona: ${activeChar?.persona || contact?.persona}. 
+User is wearing a persona mask: ${activeMask ? `${activeMask.name} (${activeMask.description})` : 'Default'}.
+The user clicked the "Reply" button, asking you to continue the conversation or respond to the last message.
+History:\n${history}`;
 
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: textToSend,
+        contents: currentInput || "Please reply to me.",
         config: { systemInstruction }
       });
 
@@ -696,41 +787,6 @@ If the user sends a "takeout" or "transfer", react appropriately based on your p
       };
 
       const updatedChats = state.chats.map(c => c.contactId === contactId ? { ...c, messages: [...newMessages, newAiMsg] } : c);
-      if (!state.chats.find(c => c.contactId === contactId)) {
-        updatedChats.push({ contactId, messages: [...newMessages, newAiMsg] });
-      }
-      updateState({ chats: updatedChats });
-    } catch (error) {
-      console.error('Chat error:', error);
-    } finally {
-      setIsTyping(false);
-    }
-  };
-
-  const handleAIReply = async () => {
-    setIsTyping(true);
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const history = chat.messages.slice(-10).map(m => `${m.role}: ${m.text}`).join('\n');
-      
-      const systemInstruction = `You are ${contact.nickname}. Persona: ${contact.persona}. 
-      The user clicked the "Reply" button, asking you to continue the conversation or respond to the last message.
-      History:\n${history}`;
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: "Please reply to me.",
-        config: { systemInstruction }
-      });
-
-      const newAiMsg = {
-        id: Date.now().toString(),
-        role: 'ai' as const,
-        text: response.text || '...',
-        timestamp: new Date().toISOString()
-      };
-
-      const updatedChats = state.chats.map(c => c.contactId === contactId ? { ...c, messages: [...chat.messages, newAiMsg] } : c);
       updateState({ chats: updatedChats });
     } catch (error) {
       console.error('AI Reply error:', error);
@@ -832,7 +888,7 @@ If the user sends a "takeout" or "transfer", react appropriately based on your p
                 className="w-9 mr-2 shrink-0 flex items-start"
                 onDoubleClick={() => handlePat(true)}
               >
-                <img src={contact.avatar} className="w-9 h-9 rounded-full object-cover border border-gray-100" />
+                <img src={activeChar?.avatar || contact.avatar} className="w-9 h-9 rounded-full object-cover border border-gray-100" />
               </div>
             )}
             
@@ -922,7 +978,7 @@ If the user sends a "takeout" or "transfer", react appropriately based on your p
                 className="w-9 ml-2 shrink-0 flex items-start"
                 onDoubleClick={() => handlePat(false)}
               >
-                <img src={state.myProfile.avatar} className="w-9 h-9 rounded-full object-cover border border-gray-100" />
+                <img src={activeMask?.avatar || state.myProfile.avatar} className="w-9 h-9 rounded-full object-cover border border-gray-100" />
               </div>
             )}
           </div>
@@ -944,6 +1000,72 @@ If the user sends a "takeout" or "transfer", react appropriately based on your p
 
       {/* Input */}
       <div className="p-3 pb-safe bg-white border-t border-gray-50">
+        {/* Character & Mask Selector */}
+        <div className="flex gap-2 mb-3 overflow-x-auto pb-1 no-scrollbar">
+          <div className="flex items-center gap-2 pr-2 border-r border-gray-100">
+            <button 
+              onClick={() => setSelectedCharId(null)}
+              className={cn(
+                "px-2 py-1 rounded-lg text-[9px] font-bold whitespace-nowrap transition-all",
+                selectedCharId === null ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-400"
+              )}
+            >
+              默认角色
+            </button>
+            {charCharacters.map((char: any) => (
+              <button 
+                key={char.id}
+                onClick={() => setSelectedCharId(char.id)}
+                className={cn(
+                  "px-2 py-1 rounded-lg text-[9px] font-bold whitespace-nowrap transition-all flex items-center gap-1",
+                  selectedCharId === char.id ? "bg-pink-500 text-white" : "bg-pink-50 text-pink-300"
+                )}
+              >
+                <img src={char.avatar} className="w-3 h-3 rounded-full object-cover" alt="" />
+                {char.name}
+              </button>
+            ))}
+            <button 
+              onClick={() => setIsCharOpen(true)}
+              className="w-5 h-5 flex items-center justify-center rounded-full bg-pink-50 text-pink-400 hover:bg-pink-100 transition-colors shrink-0"
+              title="管理角色"
+            >
+              <Plus size={12} />
+            </button>
+          </div>
+          <div className="flex items-center gap-2 pl-1">
+            <button 
+              onClick={() => setSelectedMaskId(null)}
+              className={cn(
+                "px-2 py-1 rounded-lg text-[9px] font-bold whitespace-nowrap transition-all",
+                selectedMaskId === null ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-400"
+              )}
+            >
+              默认人设
+            </button>
+            {personaMasks.map((mask: any) => (
+              <button 
+                key={mask.id}
+                onClick={() => setSelectedMaskId(mask.id)}
+                className={cn(
+                  "px-2 py-1 rounded-lg text-[9px] font-bold whitespace-nowrap transition-all flex items-center gap-1",
+                  selectedMaskId === mask.id ? "bg-blue-500 text-white" : "bg-blue-50 text-blue-300"
+                )}
+              >
+                <img src={mask.avatar} className="w-3 h-3 rounded-full object-cover" alt="" />
+                {mask.name}
+              </button>
+            ))}
+            <button 
+              onClick={() => setIsCharOpen(true)}
+              className="w-5 h-5 flex items-center justify-center rounded-full bg-blue-50 text-blue-400 hover:bg-blue-100 transition-colors shrink-0"
+              title="管理面具"
+            >
+              <Plus size={12} />
+            </button>
+          </div>
+        </div>
+
         {quotedMsgId && (
           <div className="mb-2 p-1.5 bg-gray-50 rounded-lg flex justify-between items-center text-[9px] text-gray-400">
             <span>引用: {chat.messages.find(m => m.id === quotedMsgId)?.text.substring(0, 30)}...</span>
@@ -976,7 +1098,7 @@ If the user sends a "takeout" or "transfer", react appropriately based on your p
               onClick={handleAIReply}
               className="w-9 h-9 flex items-center justify-center rounded-full bg-white border border-gray-100 text-gray-900 hover:bg-gray-50 transition-colors"
             >
-              <RotateCcw size={16} />
+              <Sparkles size={16} />
             </button>
             {/* More Button */}
             <button 

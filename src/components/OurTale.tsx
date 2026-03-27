@@ -175,7 +175,7 @@ const EditableImage = ({ src, onChange, className }: { src: string, onChange: (v
 };
 
 // --- Main Component ---
-export default function OurTale({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
+export default function OurTale({ isOpen, onClose, isFullscreen }: { isOpen: boolean, onClose: () => void, isFullscreen?: boolean }) {
   const [rootState, setRootState] = useState<OurTaleRootState>(() => {
     const saved = localStorage.getItem('ourtale_root_state');
     if (saved) return JSON.parse(saved);
@@ -228,13 +228,15 @@ export default function OurTale({ isOpen, onClose }: { isOpen: boolean, onClose:
     >
       {/* Header */}
       <div className="h-16 flex items-center justify-between px-6 bg-white/80 backdrop-blur-md border-b border-gray-100 z-10 relative">
-        <button onClick={() => {
-          if (activeTab) setActiveTab(null);
-          else if (rootState.currentSpaceId) setRootState(prev => ({ ...prev, currentSpaceId: null }));
-          else onClose();
-        }} className="p-2 -ml-2 text-gray-400 hover:text-gray-900 transition-colors">
-          <ChevronLeft className="w-6 h-6" />
-        </button>
+        {!isFullscreen && (
+          <button onClick={() => {
+            if (activeTab) setActiveTab(null);
+            else if (rootState.currentSpaceId) setRootState(prev => ({ ...prev, currentSpaceId: null }));
+            else onClose();
+          }} className="p-2 -ml-2 text-gray-400 hover:text-gray-900 transition-colors">
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+        )}
         <h2 className="text-xs font-sans font-bold text-gray-900 uppercase tracking-[0.2em]">
           {!rootState.currentSpaceId ? 'Index' : 
            activeTab === 'anniversary' ? 'Anniversary' :

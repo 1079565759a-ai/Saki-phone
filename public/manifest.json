@@ -1,7 +1,7 @@
 {
-  "name": "YXGAL Game",
-  "short_name": "YXGAL",
-  "description": "YXGAL Galagame 展示与创作平台",
+  "name": "GalaGame",
+  "short_name": "GalaGame",
+  "description": "GalaGame Galagame 展示与创作平台",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

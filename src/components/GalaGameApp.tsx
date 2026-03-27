@@ -8,7 +8,8 @@ import {
   Library,
   ArrowLeft, 
   Plus,
-  Check
+  Check,
+  X
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 
@@ -27,11 +28,12 @@ import SettingsView from './galagame/SettingsView';
 interface GalaGameAppProps {
   onClose: () => void;
   language?: string;
+  isFullscreen?: boolean;
 }
 
 type Tab = 'home' | 'records' | 'community' | 'profile' | 'my-works';
 
-const GalaGameApp: React.FC<GalaGameAppProps> = ({ onClose, language = 'zh' }) => {
+const GalaGameApp: React.FC<GalaGameAppProps> = ({ onClose, language = 'zh', isFullscreen }) => {
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [selectedGame, setSelectedGame] = useState<any>(null);
   const [showStore, setShowStore] = useState(false);
@@ -93,13 +95,14 @@ const GalaGameApp: React.FC<GalaGameAppProps> = ({ onClose, language = 'zh' }) =
         </div>
         <div className="flex items-center gap-4">
           <span className="text-[8px] font-mono font-bold text-gray-900 tracking-widest">15:27:00</span>
-          <button 
-            onClick={onClose}
-            className="w-4 h-4 flex items-center justify-center hover:bg-gray-50 transition-colors"
-          >
-            <div className="w-full h-[1px] bg-gray-900 rotate-45 absolute" />
-            <div className="w-full h-[1px] bg-gray-900 -rotate-45 absolute" />
-          </button>
+          {!isFullscreen && (
+            <button 
+              onClick={onClose}
+              className="w-7 h-7 rounded-lg bg-gray-50 flex items-center justify-center hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-900 border border-gray-100"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 

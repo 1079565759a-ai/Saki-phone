@@ -60,7 +60,11 @@ import {
   Clock,
   Users,
   Hash,
-  Delete
+  Delete,
+  Sparkles,
+  Timer,
+  BookOpen,
+  Moon
 } from 'lucide-react';
 import { motion, AnimatePresence, Reorder } from 'motion/react';
 import { format } from 'date-fns';
@@ -77,6 +81,10 @@ import PhoneApp from './components/PhoneApp';
 import Cine2App from './components/Cine2App';
 import HeartLinkApp from './components/HeartLinkApp';
 import PhotoApp from './components/PhotoApp';
+import CharApp from './components/CharApp';
+import StudyRoomApp from './components/StudyRoomApp';
+import LuckyApp from './components/LuckyApp';
+import MemoryApp from './components/MemoryApp';
 import { compressImage } from './utils/image';
 
 const translations = {
@@ -100,6 +108,7 @@ const translations = {
     showRain: "雨滴特效",
     showSnow: "下雪特效",
     showSakura: "樱花特效",
+    isFullscreen: "全屏显示模式",
     minimaxApiKey: "MiniMax API 密钥",
     minimaxModel: "MiniMax 模型",
     apiConfig: "API 配置",
@@ -133,6 +142,7 @@ const translations = {
     showRain: "Rain Effect",
     showSnow: "Snow Effect",
     showSakura: "Sakura Effect",
+    isFullscreen: "Full Screen Mode",
     minimaxApiKey: "MiniMax API Key",
     minimaxModel: "MiniMax Model",
     apiConfig: "API Config",
@@ -521,13 +531,13 @@ const AppIcon: React.FC<AppIconProps> = ({
       <div className="flex flex-col items-center gap-1">
         {onLabelChange ? (
           <EditableText 
-            value={label} 
+            value={label || name} 
             onChange={onLabelChange} 
-            className="text-[10px] font-bold uppercase tracking-widest" 
-            style={{ color: labelColor || "#9CA3AF" }}
+            className="text-xs font-bold" 
+            style={{ color: labelColor || "#374151" }}
           />
         ) : (
-          <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: labelColor || "#9CA3AF" }}>{label}</span>
+          <span className="text-xs font-bold" style={{ color: labelColor || "#374151" }}>{label || name}</span>
         )}
 
         {(showEdit || isEditMode) && onIconChange && (
@@ -869,119 +879,215 @@ export default function App() {
   const [isCine2Open, setIsCine2Open] = useState(false);
   const [isHeartLinkOpen, setIsHeartLinkOpen] = useState(false);
   const [isPhotoOpen, setIsPhotoOpen] = useState(false);
+  const [isCharOpen, setIsCharOpen] = useState(false);
+  const [isStudyRoomOpen, setIsStudyRoomOpen] = useState(false);
+  const [isLuckyOpen, setIsLuckyOpen] = useState(false);
+  const [isMemoryOpen, setIsMemoryOpen] = useState(false);
   const [isPhoneOpen, setIsPhoneOpen] = useState(false);
   const [isOurTaleBound, setIsOurTaleBound] = useState(false);
   const [activeOurTaleTab, setActiveOurTaleTab] = useState<'anniversary' | 'message' | 'check' | 'report' | null>(null);
 
   // App State for editables
-  const [appState, setAppState] = useState({
-    wallpaper: "", // Empty means use default decoration
-    weather: "多云 24°C",
-    profileName: "芙糕",
-    profileHandle: "@fugao_2603",
-    profileAvatar: "https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAERgJFpq-WeW_-xUHBIWvNPyriVIFcZGAACpx4AAlIUYFXjvsH9dX3zKzoE.jpeg",
-    profileHeaderImg: "https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAERgL1pq-8bYFXZ45sTyVidlw1OsWmHnQAC_B4AAlIUYFWmODBidfrEoDoE.jpeg",
-    searchBarText: "阿嗚一口吃掉泥૮  ´͈ ᗜ `͈ ა♡",
-    profileQuote: "雪花飘落在你鼻尖，快分不清楚",
-    profileLocation: "櫻",
-    widgetTitle: "Heartlink",
-    widgetDollImg: "https://picsum.photos/seed/bear/200/200",
-    widgetStatus: "为你匹配到心动对象",
-    widgetTime: "00:14 上午",
-    widgetBtn1: "同意",
-    widgetBtn2: "拒絕",
-    widgetFooter: "heartlink",
-    moviePoster: "https://picsum.photos/seed/movie/300/400",
-    photoImg: "https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAERgJZpq-bLvBlK1SYtc8wdPdXnUsm6EgACuR4AAlIUYFXDE6PqfxzymToE.jpeg",
-    photoCaption: "Sweet Moment",
-    anniversaryCharPhoto: "https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAERkRVpruK1LMxtGyyl5aID78ukxfYQiwAChRwAAnZPeFXFwLHbPLeAFjoE.png",
-    anniversaryUserPhoto: "https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAERkRlpruO1xtAIwmST3FjrdqyRsxbmmAACihwAAnZPeFXzOYhW1rulGToE.png",
-    anniversaryDays: "77天",
-    anniversaryTitle: "我们已经相爱",
-    anniversaryCharLabel: "char",
-    anniversaryUserLabel: "user",
-    ourTaleCover: "https://picsum.photos/seed/cover/600/400",
-    ourTaleLeftAvatar: "https://picsum.photos/seed/girl/200/200",
-    ourTaleRightAvatar: "https://picsum.photos/seed/boy/200/200",
-    anniversaries: [
-      { id: '1', title: '相恋', date: '2023-12-20', isPinned: true },
-      { id: '2', title: '第一次旅行', date: '2024-05-01', isPinned: false }
-    ],
-    chatAiName: "福熊兒",
-    chatAiAvatar: "https://picsum.photos/seed/bear/100/100",
-    chatStatus: "在线",
-    ticketLabel: "ADMIT ONE",
-    ticketId: "#20260221",
-    showRain: true,
-    showSnow: false,
-    showSakura: false,
-    showFloatingBall: true,
-    floatingBallImg: "https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAERgJFpq-WeW_-xUHBIWvNPyriVIFcZGAACpx4AAlIUYFXjvsH9dX3zKzoE.jpeg",
-    floatingBallAiId: "",
-    showMusicPopup: true,
-    recordThoughts: false,
-    thoughtsHistory: [] as { id: string; aiId: string; aiName: string; content: string; timestamp: number }[],
-    music: {
-      isPlaying: false,
-      currentTrack: "Sweet Moment",
-      artist: "芙糕",
-      cover: "https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAERgJFpq-WeW_-xUHBIWvNPyriVIFcZGAACpx4AAlIUYFXjvsH9dX3zKzoE.jpeg",
-      volume: 80,
-      progress: 35
-    },
-    apiBaseUrl: "https://api.openai.com/v1",
-    apiKey: "",
-    selectedModel: "gpt-3.5-turbo",
-    availableModels: [] as string[],
-    modelFilter: "",
-    temperature: 0.7,
-    contextLength: 10,
-    apiProvider: "custom", // 'openai', 'deepseek', 'groq', 'custom'
-    systemPrompt: "你是一个温柔、贴心的AI伙伴，说话风格带有INS奶白风的甜美感，经常使用可爱的表情符号。",
-    language: "zh",
-    photoFilter: "color",
-    homeScreenStyle: "creamy", // 'classic', 'creamy'
-    iconSize: "small", // 'small', 'medium', 'large'
-    homeScreenFontColor: "#9CA3AF",
-    minimaxApiKey: "",
-    minimaxModel: "abab6.5s-chat",
-    callHistory: [] as Array<{ id: string; type: 'incoming' | 'outgoing' | 'missed'; name: string; number: string; time: string; duration?: string }>,
-    aiPhoneNumber: "520-1314",
-    userPhoneNumber: "188-8888-8888",
-    appLabels: {
-      heartlink: "Heartlink",
-      chat: "Chat",
-      ourtale: "OurTale",
-      moment: "Moment",
-      galagame: "GalaGame",
-      phone: "Phone",
-      messages: "Messages",
-      settings: "Settings",
-      cine2: "Cine2",
-      radio: "Radio",
-      photo: "Photo"
-    } as Record<string, string>,
-    appIcons: {
-      heartlink: null,
-      chat: null,
-      ourtale: null,
-      moment: null,
-      galagame: null,
-      phone: null,
-      messages: null,
-      settings: null,
-      cine2: null,
-      radio: null,
-      photo: null
-    } as Record<string, string | null>
+  const [appState, setAppState] = useState(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('gala_game_state') : null;
+    const initialState = {
+      wallpaper: "", // Empty means use default decoration
+      weather: "多云 24°C",
+      profileName: "芙糕",
+      profileHandle: "@fugao_2603",
+      profileAvatar: "https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAERgJFpq-WeW_-xUHBIWvNPyriVIFcZGAACpx4AAlIUYFXjvsH9dX3zKzoE.jpeg",
+      profileHeaderImg: "https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAERgL1pq-8bYFXZ45sTyVidlw1OsWmHnQAC_B4AAlIUYFWmODBidfrEoDoE.jpeg",
+      searchBarText: "阿嗚一口吃掉泥૮  ´͈ ᗜ `͈ ა♡",
+      profileQuote: "雪花飘落在你鼻尖，快分不清楚",
+      profileLocation: "櫻",
+      widgetTitle: "Heartlink",
+      widgetDollImg: "https://picsum.photos/seed/bear/200/200",
+      widgetStatus: "为你匹配到心动对象",
+      widgetTime: "00:14 上午",
+      widgetBtn1: "同意",
+      widgetBtn2: "拒絕",
+      widgetFooter: "heartlink",
+      moviePoster: "https://picsum.photos/seed/movie/300/400",
+      photoImg: "https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAERgJZpq-bLvBlK1SYtc8wdPdXnUsm6EgACuR4AAlIUYFXDE6PqfxzymToE.jpeg",
+      photoCaption: "Sweet Moment",
+      anniversaryCharPhoto: "https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAERkRVpruK1LMxtGyyl5aID78ukxfYQiwAChRwAAnZPeFXFwLHbPLeAFjoE.png",
+      anniversaryUserPhoto: "https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAERkRlpruO1xtAIwmST3FjrdqyRsxbmmAACihwAAnZPeFXzOYhW1rulGToE.png",
+      anniversaryDays: "77天",
+      anniversaryTitle: "我们已经相爱",
+      anniversaryCharLabel: "char",
+      anniversaryUserLabel: "user",
+      ourTaleCover: "https://picsum.photos/seed/cover/600/400",
+      ourTaleLeftAvatar: "https://picsum.photos/seed/girl/200/200",
+      ourTaleRightAvatar: "https://picsum.photos/seed/boy/200/200",
+      anniversaries: [
+        { id: '1', title: '相恋', date: '2023-12-20', isPinned: true },
+        { id: '2', title: '第一次旅行', date: '2024-05-01', isPinned: false }
+      ],
+      chatAiName: "福熊兒",
+      chatAiAvatar: "https://picsum.photos/seed/bear/100/100",
+      chatStatus: "在线",
+      charCharacters: [
+        {
+          id: 'char-1',
+          name: '林深',
+          title: '森林守护者',
+          avatar: 'https://picsum.photos/seed/forest/200/200',
+          tags: ['温柔', '神秘', '自然'],
+          description: '居住在迷雾森林深处的守护者，拥有与植物沟通的能力。',
+          persona: '你是一个温柔、神秘的森林守护者，说话轻声细语，经常引用自然的意象。',
+          greeting: '旅人，欢迎来到这片森林。这里的风会告诉你所有的秘密。',
+          affection: 60,
+          mood: '宁静',
+          isFavorite: true
+        }
+      ],
+      personaMasks: [
+        {
+          id: 'mask-1',
+          name: '好奇的旅人',
+          avatar: 'https://picsum.photos/seed/traveler/200/200',
+          description: '一个对世界充满好奇，四处游历的旅人。',
+          boundCharacterIds: []
+        }
+      ],
+      selectedCharId: null as string | null,
+      selectedMaskId: null as string | null,
+      ticketLabel: "ADMIT ONE",
+      ticketId: "#20260221",
+      showRain: true,
+      showSnow: false,
+      showSakura: false,
+      showFloatingBall: true,
+      floatingBallImg: "https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAERgJFpq-WeW_-xUHBIWvNPyriVIFcZGAACpx4AAlIUYFXjvsH9dX3zKzoE.jpeg",
+      floatingBallAiId: "",
+      showMusicPopup: true,
+      recordThoughts: false,
+      thoughtsHistory: [] as { id: string; aiId: string; aiName: string; content: string; timestamp: number }[],
+      music: {
+        isPlaying: false,
+        currentTrack: "Sweet Moment",
+        artist: "芙糕",
+        cover: "https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAERgJFpq-WeW_-xUHBIWvNPyriVIFcZGAACpx4AAlIUYFXjvsH9dX3zKzoE.jpeg",
+        volume: 80,
+        progress: 35
+      },
+      apiBaseUrl: "https://api.openai.com/v1",
+      apiKey: "",
+      selectedModel: "gpt-3.5-turbo",
+      availableModels: [] as string[],
+      modelFilter: "",
+      temperature: 0.7,
+      contextLength: 10,
+      apiProvider: "custom", // 'openai', 'deepseek', 'groq', 'custom'
+      systemPrompt: "你是一个温柔、贴心的AI伙伴，说话风格带有INS奶白风的甜美感，经常使用可爱的表情符号。",
+      language: "zh",
+      photoFilter: "color",
+      homeScreenStyle: "creamy", // 'classic', 'creamy'
+      iconSize: "small", // 'small', 'medium', 'large'
+      homeScreenFontColor: "#374151",
+      minimaxApiKey: "",
+      minimaxModel: "abab6.5s-chat",
+      callHistory: [] as Array<{ id: string; type: 'incoming' | 'outgoing' | 'missed'; name: string; number: string; time: string; duration?: string }>,
+      aiPhoneNumber: "520-1314",
+      userPhoneNumber: "188-8888-8888",
+      isFullscreen: false,
+      appLabels: {
+        heartlink: "心动链接",
+        chat: "聊天",
+        ourtale: "我们的故事",
+        moment: "瞬间",
+        galagame: "Gala游戏",
+        phone: "电话",
+        messages: "消息",
+        settings: "设置",
+        cine2: "影院",
+        radio: "电台",
+        photo: "相册",
+        char: "角色档案",
+        study: "自习室",
+        lucky: "幸运签",
+        memory: "记忆碎片"
+      } as Record<string, string>,
+      appIcons: {
+        heartlink: null,
+        chat: null,
+        ourtale: null,
+        moment: null,
+        galagame: null,
+        phone: null,
+        messages: null,
+        settings: null,
+        cine2: null,
+        radio: null,
+        photo: null,
+        char: null,
+        study: null,
+        lucky: null,
+        memory: null
+      } as Record<string, string | null>
+    };
+
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // Deep merge labels and icons to ensure new apps have names even if old state is loaded
+        const mergedLabels = { ...initialState.appLabels };
+        if (parsed.appLabels) {
+          Object.keys(parsed.appLabels).forEach(key => {
+            if (parsed.appLabels[key]) mergedLabels[key] = parsed.appLabels[key];
+          });
+        }
+
+        const mergedIcons = { ...initialState.appIcons };
+        if (parsed.appIcons) {
+          Object.keys(parsed.appIcons).forEach(key => {
+            if (parsed.appIcons[key]) mergedIcons[key] = parsed.appIcons[key];
+          });
+        }
+
+        return { 
+          ...initialState, 
+          ...parsed,
+          appLabels: mergedLabels,
+          appIcons: mergedIcons
+        };
+      } catch (e) {
+        return initialState;
+      }
+    }
+    return initialState;
   });
+
+  // Persist state
+  useEffect(() => {
+    localStorage.setItem('gala_game_state', JSON.stringify(appState));
+  }, [appState]);
 
   const [isEditMode, setIsEditMode] = useState(false);
   const [gridIcons, setGridIcons] = useState(['heartlink', 'chat', 'galagame', 'phone']);
-  const [dockIcons, setDockIcons] = useState(['cine2', 'radio', 'photo']);
+  const [secondPageIcons, setSecondPageIcons] = useState(['study', 'lucky', 'memory']);
+  const [dockIcons, setDockIcons] = useState(['cine2', 'radio', 'photo', 'char']);
   const [bottomLeftIcons, setBottomLeftIcons] = useState(['ourtale', 'settings']);
+  const [currentGridPage, setCurrentGridPage] = useState(0);
 
   const t = translations[appState.language as 'zh' | 'en'] || translations.zh;
+
+  // Fullscreen effect
+  useEffect(() => {
+    if (appState.isFullscreen) {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+          console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+        });
+      }
+    } else {
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(err => {
+          console.error(`Error attempting to exit full-screen mode: ${err.message} (${err.name})`);
+        });
+      }
+    }
+  }, [appState.isFullscreen]);
 
   const updateState = (key: keyof typeof appState, value: any) => {
     setAppState(prev => ({ ...prev, [key]: value }));
@@ -1045,6 +1151,10 @@ export default function App() {
       case 'cine2': return Film;
       case 'radio': return RadioIcon;
       case 'photo': return Camera;
+      case 'char': return Sparkles;
+      case 'study': return BookOpen;
+      case 'lucky': return Moon;
+      case 'memory': return Book;
       default: return Grid;
     }
   };
@@ -1061,6 +1171,10 @@ export default function App() {
       case 'cine2': setIsCine2Open(true); break;
       case 'heartlink': setIsHeartLinkOpen(true); break;
       case 'photo': setIsPhotoOpen(true); break;
+      case 'char': setIsCharOpen(true); break;
+      case 'study': setIsStudyRoomOpen(true); break;
+      case 'lucky': setIsLuckyOpen(true); break;
+      case 'memory': setIsMemoryOpen(true); break;
       default: break;
     }
   };
@@ -1070,6 +1184,45 @@ export default function App() {
     const newList = [...list];
     [newList[index1], newList[index2]] = [newList[index2], newList[index1]];
     setList(newList);
+  };
+
+  const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [testMessage, setTestMessage] = useState('');
+
+  const handleTestConnection = async () => {
+    if (!appState.apiBaseUrl || !appState.apiKey) {
+      setTestStatus('error');
+      setTestMessage('请先输入 API 地址和密钥');
+      return;
+    }
+    setTestStatus('testing');
+    setTestMessage('正在测试连接...');
+    try {
+      const response = await fetch(`${appState.apiBaseUrl.replace(/\/$/, '')}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${appState.apiKey}`
+        },
+        body: JSON.stringify({
+          model: appState.selectedModel,
+          messages: [{ role: 'user', content: 'ping' }],
+          max_tokens: 5
+        })
+      });
+      if (response.ok) {
+        setTestStatus('success');
+        setTestMessage('连接成功！');
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        setTestStatus('error');
+        setTestMessage(`连接失败: ${errorData.error?.message || response.statusText}`);
+      }
+    } catch (err: any) {
+      setTestStatus('error');
+      setTestMessage(`连接错误: ${err.message}`);
+    }
+    setTimeout(() => setTestStatus('idle'), 3000);
   };
 
   const handleSendMessage = async () => {
@@ -1171,12 +1324,19 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-4 font-sans selection:bg-pink-50/30">
-      {/* Phone Frame */}
+    <div className="fixed inset-0 bg-[#f8f8f8] flex items-center justify-center font-sans selection:bg-pink-50/30 overflow-hidden">
+      {/* Phone Frame Wrapper */}
       <div className={cn(
-        "relative w-[390px] h-[844px] bg-white rounded-[3.5rem] shadow-[0_0_60px_rgba(0,0,0,0.05)] border-[12px] border-gray-900 overflow-hidden flex flex-col",
-        appState.photoFilter === 'bw' && "photo-filter-bw"
+        "relative transition-all duration-500 ease-in-out overflow-hidden flex flex-col",
+        appState.isFullscreen 
+          ? "w-full h-full rounded-none border-0" 
+          : "w-[390px] h-[844px] rounded-[3rem] border-[8px] border-gray-900 shadow-2xl"
       )}>
+        {/* Main Content */}
+        <div className={cn(
+          "relative w-full h-full bg-white overflow-hidden flex flex-col",
+          appState.photoFilter === 'bw' && "photo-filter-bw"
+        )}>
         
         {/* Background Decoration / Wallpaper */}
         {appState.wallpaper ? (
@@ -1201,18 +1361,19 @@ export default function App() {
               onClose={() => setIsPhoneOpen(false)} 
               appState={appState}
               updateState={updateState}
+              isFullscreen={appState.isFullscreen}
             />
           )}
         </AnimatePresence>
 
         <AnimatePresence mode="wait">
-          {!isChatOpen && !isSettingsOpen && !isGalaGameOpen && !isRadioOpen && !isCine2Open && !isHeartLinkOpen && !isPhotoOpen ? (
+          {!isChatOpen && !isSettingsOpen && !isGalaGameOpen && !isRadioOpen && !isCine2Open && !isHeartLinkOpen && !isPhotoOpen && !isCharOpen && !isStudyRoomOpen && !isLuckyOpen && !isMemoryOpen ? (
             <motion.div 
               key="home"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 1.05 }}
-              className="relative z-10 flex-1 flex flex-col px-6 pt-4 pb-8"
+              className="relative z-10 flex-1 flex flex-col px-6 pt-safe pb-safe"
             >
               {isEditMode && (
                 <div className="absolute top-2 left-0 right-0 flex justify-center z-50">
@@ -1407,37 +1568,64 @@ export default function App() {
 
                     {/* Right Area */}
                     <div className="flex flex-col gap-3">
-                      {/* 2x2 App Grid - Dynamic */}
-                      <Reorder.Group 
-                        axis="y" 
-                        values={gridIcons} 
-                        onReorder={setGridIcons}
-                        className="grid grid-cols-2 gap-y-3 gap-x-2 px-1"
-                      >
-                        {gridIcons.map((key) => (
-                          <Reorder.Item 
-                            key={key} 
-                            value={key}
-                            dragListener={isEditMode}
+                      {/* 2x2 App Grid - Dynamic with Pagination */}
+                      <div className="relative overflow-hidden">
+                        <AnimatePresence mode="wait">
+                          <motion.div
+                            key={currentGridPage}
+                            drag="x"
+                            dragConstraints={{ left: 0, right: 0 }}
+                            onDragEnd={(e, { offset, velocity }) => {
+                              const swipe = offset.x;
+                              if (swipe < -30 && currentGridPage === 0) {
+                                setCurrentGridPage(1);
+                              } else if (swipe > 30 && currentGridPage === 1) {
+                                setCurrentGridPage(0);
+                              }
+                            }}
+                            initial={{ x: currentGridPage === 0 ? -10 : 10, opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            exit={{ x: currentGridPage === 0 ? 10 : -10, opacity: 0 }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                            className="grid grid-cols-2 gap-y-3 gap-x-2 px-1"
                           >
-                            <AppIcon 
-                              name={key} 
-                              label={appState.appLabels[key]} 
-                              icon={getAppIcon(key)} 
-                              iconImg={appState.appIcons[key]}
-                              onLabelChange={(v) => updateLabel(key, v)}
-                              onIconChange={(v) => updateIcon(key, v)}
-                              onClick={() => handleIconClick(key)}
-                              isEditMode={isEditMode}
-                              onLongPress={() => setIsEditMode(true)}
-                              labelColor={appState.homeScreenFontColor}
-                              language={appState.language}
-                              size={appState.iconSize as any}
-                              variant={appState.homeScreenStyle === 'creamy' ? 'creamy' : 'retro'}
+                            {(currentGridPage === 0 ? gridIcons : secondPageIcons).map((key) => (
+                              <AppIcon 
+                                key={key}
+                                name={key} 
+                                label={appState.appLabels[key]} 
+                                icon={getAppIcon(key)} 
+                                iconImg={appState.appIcons[key]}
+                                onLabelChange={(v) => updateLabel(key, v)}
+                                onIconChange={(v) => updateIcon(key, v)}
+                                onClick={() => handleIconClick(key)}
+                                isEditMode={isEditMode}
+                                onLongPress={() => setIsEditMode(true)}
+                                labelColor={appState.homeScreenFontColor}
+                                language={appState.language}
+                                size={appState.iconSize as any}
+                                variant={appState.homeScreenStyle === 'creamy' ? 'creamy' : 'retro'}
+                              />
+                            ))}
+                          </motion.div>
+                        </AnimatePresence>
+                        
+                        {/* Page Indicators for Creamy Style */}
+                        <div className="flex justify-center gap-1.5 mt-2">
+                          {[0, 1].map((page) => (
+                            <button
+                              key={page}
+                              onClick={() => setCurrentGridPage(page)}
+                              className={cn(
+                                "w-1 h-1 rounded-full transition-all duration-300",
+                                currentGridPage === page 
+                                  ? "bg-gray-900 w-2.5" 
+                                  : "bg-gray-300"
+                              )}
                             />
-                          </Reorder.Item>
-                        ))}
-                      </Reorder.Group>
+                          ))}
+                        </div>
+                      </div>
 
                       {/* Decoration - Scaled down and centered */}
                       <div className="flex-1 flex flex-col justify-center items-center px-2">
@@ -1486,39 +1674,78 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Classic Style: Full Grid */}
-                  <div className="flex-1 overflow-y-auto pr-1">
-                    <div className="grid grid-cols-4 gap-y-8 gap-x-2">
-                      {[...gridIcons, ...bottomLeftIcons].map((key) => (
-                        <AppIcon 
-                          key={key}
-                          name={key} 
-                          label={appState.appLabels[key]} 
-                          icon={getAppIcon(key)} 
-                          iconImg={appState.appIcons[key]}
-                          onClick={() => handleIconClick(key)}
-                          onLabelChange={(v) => updateLabel(key, v)}
-                          onIconChange={(v) => updateIcon(key, v)}
-                          isEditMode={isEditMode}
-                          onLongPress={() => setIsEditMode(true)}
-                          labelColor={appState.homeScreenFontColor}
-                          language={appState.language}
-                          size={appState.iconSize as any}
-                          variant={appState.homeScreenStyle === 'creamy' ? 'creamy' : 'retro'}
-                        />
-                      ))}
+                  {/* Classic Style: Full Grid with Pagination */}
+                  <div className="flex-1 relative overflow-hidden">
+                    <div className="absolute inset-0 flex flex-col">
+                      <div className="flex-1 overflow-hidden relative">
+                        <AnimatePresence mode="wait">
+                          <motion.div
+                            key={currentGridPage}
+                            drag="x"
+                            dragConstraints={{ left: 0, right: 0 }}
+                            onDragEnd={(e, { offset, velocity }) => {
+                              const swipe = offset.x;
+                              if (swipe < -50 && currentGridPage === 0) {
+                                setCurrentGridPage(1);
+                              } else if (swipe > 50 && currentGridPage === 1) {
+                                setCurrentGridPage(0);
+                              }
+                            }}
+                            initial={{ x: currentGridPage === 0 ? -20 : 20, opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            exit={{ x: currentGridPage === 0 ? 20 : -20, opacity: 0 }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                            className="grid grid-cols-4 gap-y-10 gap-x-2"
+                          >
+                            {(currentGridPage === 0 ? [...gridIcons, ...bottomLeftIcons] : secondPageIcons).map((key) => (
+                              <AppIcon 
+                                key={key}
+                                name={key} 
+                                label={appState.appLabels[key]} 
+                                icon={getAppIcon(key)} 
+                                iconImg={appState.appIcons[key]}
+                                onClick={() => handleIconClick(key)}
+                                onLabelChange={(v) => updateLabel(key, v)}
+                                onIconChange={(v) => updateIcon(key, v)}
+                                isEditMode={isEditMode}
+                                onLongPress={() => setIsEditMode(true)}
+                                labelColor={appState.homeScreenFontColor}
+                                language={appState.language}
+                                size={appState.iconSize as any}
+                                variant={appState.homeScreenStyle === 'creamy' ? 'creamy' : 'retro'}
+                              />
+                            ))}
+                          </motion.div>
+                        </AnimatePresence>
+                      </div>
+
+                      {/* Page Indicators */}
+                      <div className="flex justify-center gap-2 py-4">
+                        {[0, 1].map((page) => (
+                          <button
+                            key={page}
+                            onClick={() => setCurrentGridPage(page)}
+                            className={cn(
+                              "w-1.5 h-1.5 rounded-full transition-all duration-300",
+                              currentGridPage === page 
+                                ? "bg-gray-900 w-4" 
+                                : "bg-gray-300"
+                            )}
+                          />
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
               )}
 
               {/* 4. Dock */}
-              <div className="mt-6">
+              <div className="mt-4">
                 <Reorder.Group 
                   axis="x" 
                   values={dockIcons} 
                   onReorder={setDockIcons}
-                  className="bg-gray-50/50 backdrop-blur-xl border border-gray-100 h-20 rounded-[2.5rem] flex items-center justify-around px-4 shadow-sm"
+                  className="bg-gray-50/50 backdrop-blur-xl border border-gray-100 h-24 rounded-[2.5rem] flex items-center justify-around px-4 shadow-sm"
                 >
                   {dockIcons.map((key) => (
                     <Reorder.Item 
@@ -1549,15 +1776,29 @@ export default function App() {
             </motion.div>
           ) : isChatOpen ? (
             <motion.div key="wechat" className="absolute inset-0 z-30">
-              <WeChatApp onClose={() => setIsChatOpen(false)} language={appState.language} />
+              <WeChatApp 
+                onClose={() => setIsChatOpen(false)} 
+                appState={appState}
+                updateState={updateState}
+                setIsCharOpen={setIsCharOpen}
+                isFullscreen={appState.isFullscreen}
+              />
             </motion.div>
           ) : isGalaGameOpen ? (
             <motion.div key="galagame" className="absolute inset-0 z-30">
-              <GalaGameApp onClose={() => setIsGalaGameOpen(false)} language={appState.language} />
+              <GalaGameApp 
+                onClose={() => setIsGalaGameOpen(false)} 
+                language={appState.language} 
+                isFullscreen={appState.isFullscreen}
+              />
             </motion.div>
           ) : isRadioOpen ? (
             <motion.div key="radio" className="absolute inset-0 z-30">
-              <RadioApp onClose={() => setIsRadioOpen(false)} language={appState.language} />
+              <RadioApp 
+                onClose={() => setIsRadioOpen(false)} 
+                language={appState.language} 
+                isFullscreen={appState.isFullscreen}
+              />
             </motion.div>
           ) : isCine2Open ? (
             <motion.div key="cine2" className="absolute inset-0 z-30">
@@ -1565,6 +1806,7 @@ export default function App() {
                 onClose={() => setIsCine2Open(false)} 
                 aiName={appState.chatAiName}
                 aiAvatar={appState.chatAiAvatar}
+                isFullscreen={appState.isFullscreen}
               />
             </motion.div>
           ) : isHeartLinkOpen ? (
@@ -1572,6 +1814,7 @@ export default function App() {
               <HeartLinkApp 
                 onClose={() => setIsHeartLinkOpen(false)} 
                 language={appState.language as 'zh' | 'en'} 
+                isFullscreen={appState.isFullscreen}
               />
             </motion.div>
           ) : isPhotoOpen ? (
@@ -1579,6 +1822,38 @@ export default function App() {
               <PhotoApp 
                 onClose={() => setIsPhotoOpen(false)} 
                 language={appState.language} 
+                isFullscreen={appState.isFullscreen}
+              />
+            </motion.div>
+          ) : isCharOpen ? (
+            <motion.div key="char" className="absolute inset-0 z-30">
+              <CharApp 
+                onClose={() => setIsCharOpen(false)} 
+                appState={appState}
+                updateState={updateState}
+                setIsChatOpen={setIsChatOpen}
+                isFullscreen={appState.isFullscreen}
+              />
+            </motion.div>
+          ) : isStudyRoomOpen ? (
+            <motion.div key="study" className="absolute inset-0 z-30">
+              <StudyRoomApp 
+                onClose={() => setIsStudyRoomOpen(false)} 
+                isFullscreen={appState.isFullscreen}
+              />
+            </motion.div>
+          ) : isLuckyOpen ? (
+            <motion.div key="lucky" className="absolute inset-0 z-30">
+              <LuckyApp 
+                onClose={() => setIsLuckyOpen(false)} 
+                isFullscreen={appState.isFullscreen}
+              />
+            </motion.div>
+          ) : isMemoryOpen ? (
+            <motion.div key="memory" className="absolute inset-0 z-30">
+              <MemoryApp 
+                onClose={() => setIsMemoryOpen(false)} 
+                isFullscreen={appState.isFullscreen}
               />
             </motion.div>
           ) : isSettingsOpen ? (
@@ -1703,6 +1978,32 @@ export default function App() {
                         </button>
                       </div>
                     </section>
+
+                    <section>
+                      <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-4">系统设置</h3>
+                      <div className="space-y-3">
+                        <button 
+                          onClick={() => updateState('isFullscreen', !appState.isFullscreen)}
+                          className={cn(
+                            "w-full p-4 border flex items-center justify-between transition-all",
+                            appState.isFullscreen 
+                              ? "bg-gray-900 border-gray-900 text-white" 
+                              : "bg-white border-gray-100 text-gray-900"
+                          )}
+                        >
+                          <span className="text-xs font-bold">{t.isFullscreen}</span>
+                          <div className={cn(
+                            "w-8 h-4 rounded-full relative transition-colors",
+                            appState.isFullscreen ? "bg-white/20" : "bg-gray-200"
+                          )}>
+                            <div className={cn(
+                              "absolute top-1 w-2 h-2 rounded-full transition-all",
+                              appState.isFullscreen ? "right-1 bg-white" : "left-1 bg-gray-400"
+                            )} />
+                          </div>
+                        </button>
+                      </div>
+                    </section>
                   </div>
                 ) : activeCategory === 'beautify' ? (
                   <div className="space-y-10">
@@ -1787,262 +2088,128 @@ export default function App() {
                     </section>
                   </div>
                 ) : activeCategory === 'api' ? (
-                  <div className="space-y-8">
+                  <div className="space-y-8 pb-10">
                     <section>
-                      <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-4">MiniMax Voice Config</h3>
+                      <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-4">大模型 API 设置</h3>
                       <div className="space-y-4">
-                        <div className="bg-white border border-gray-100 p-4">
-                          <label className="block text-[10px] font-bold text-gray-900 mb-2 uppercase tracking-widest">{t.minimaxApiKey}</label>
+                        <div className="bg-white border border-gray-100 p-5">
+                          <label className="block text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-widest">API 接口地址</label>
+                          <input 
+                            type="text" 
+                            value={appState.apiBaseUrl}
+                            onChange={e => updateState('apiBaseUrl', e.target.value)}
+                            className="w-full bg-gray-50 border border-gray-100 p-3 text-xs outline-none focus:border-gray-900/30 transition-colors font-mono"
+                            placeholder="https://api.openai.com/v1"
+                          />
+                          <p className="mt-2 text-[9px] text-gray-400">支持哈基米、织云、DeepSeek 等国内平台接口</p>
+                        </div>
+
+                        <div className="bg-white border border-gray-100 p-5">
+                          <label className="block text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-widest">API Key</label>
+                          <input 
+                            type="password" 
+                            value={appState.apiKey}
+                            onChange={e => updateState('apiKey', e.target.value)}
+                            className="w-full bg-gray-50 border border-gray-100 p-3 text-xs outline-none focus:border-gray-900/30 transition-colors font-mono"
+                            placeholder="sk-..."
+                          />
+                        </div>
+
+                        <div className="bg-white border border-gray-100 p-5">
+                          <label className="block text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-widest">模型选择</label>
+                          <select 
+                            value={appState.selectedModel}
+                            onChange={e => updateState('selectedModel', e.target.value)}
+                            className="w-full bg-gray-50 border border-gray-100 p-3 text-xs outline-none focus:border-gray-900/30 transition-colors appearance-none"
+                          >
+                            <optgroup label="常用模型">
+                              <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                              <option value="gpt-4">GPT-4</option>
+                              <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                            </optgroup>
+                            <optgroup label="国内平台常用">
+                              <option value="deepseek-chat">DeepSeek Chat</option>
+                              <option value="deepseek-coder">DeepSeek Coder</option>
+                              <option value="qwen-turbo">通义千问 Turbo</option>
+                              <option value="qwen-max">通义千问 Max</option>
+                              <option value="ernie-bot-4">文心一言 4.0</option>
+                            </optgroup>
+                            <optgroup label="其他">
+                              <option value="claude-3-opus-20240229">Claude 3 Opus</option>
+                              <option value="claude-3-sonnet-20240229">Claude 3 Sonnet</option>
+                              <option value="claude-3-haiku-20240307">Claude 3 Haiku</option>
+                            </optgroup>
+                          </select>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <button 
+                            onClick={handleTestConnection}
+                            disabled={testStatus === 'testing'}
+                            className={cn(
+                              "py-4 border text-[10px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2",
+                              testStatus === 'testing' ? "bg-gray-50 border-gray-100 text-gray-400" :
+                              testStatus === 'success' ? "bg-green-50 border-green-200 text-green-600" :
+                              testStatus === 'error' ? "bg-red-50 border-red-200 text-red-600" :
+                              "bg-white border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white"
+                            )}
+                          >
+                            {testStatus === 'testing' ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Globe className="w-3 h-3" />}
+                            {testStatus === 'testing' ? '测试中...' : '测试连接'}
+                          </button>
+                          <button 
+                            onClick={() => {
+                              setTestStatus('success');
+                              setTestMessage('设置已保存');
+                              setTimeout(() => setTestStatus('idle'), 2000);
+                            }}
+                            className="py-4 bg-gray-900 border border-gray-900 text-white text-[10px] font-bold uppercase tracking-widest hover:bg-black transition-all flex items-center justify-center gap-2"
+                          >
+                            <CheckCircle2 className="w-3 h-3" />
+                            保存设置
+                          </button>
+                        </div>
+
+                        {testMessage && (
+                          <div className={cn(
+                            "p-3 text-[10px] font-medium flex items-center gap-2",
+                            testStatus === 'success' ? "text-green-600 bg-green-50/50" : 
+                            testStatus === 'error' ? "text-red-600 bg-red-50/50" : "text-gray-500 bg-gray-50"
+                          )}>
+                            {testStatus === 'success' ? <CheckCircle2 className="w-3 h-3" /> : 
+                             testStatus === 'error' ? <AlertCircle className="w-3 h-3" /> : <RefreshCw className="w-3 h-3 animate-spin" />}
+                            {testMessage}
+                          </div>
+                        )}
+                      </div>
+                    </section>
+
+                    <section>
+                      <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-4">语音合成配置 (MiniMax)</h3>
+                      <div className="space-y-4">
+                        <div className="bg-white border border-gray-100 p-5">
+                          <label className="block text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-widest">{t.minimaxApiKey}</label>
                           <input 
                             type="password" 
                             value={appState.minimaxApiKey}
                             onChange={e => updateState('minimaxApiKey', e.target.value)}
-                            className="w-full bg-white border border-gray-100 p-3 text-xs outline-none focus:border-gray-900/30 transition-colors"
+                            className="w-full bg-gray-50 border border-gray-100 p-3 text-xs outline-none focus:border-gray-900/30 transition-colors font-mono"
                             placeholder="Enter MiniMax API Key"
                           />
                         </div>
-                        <div className="bg-white border border-gray-100 p-4">
-                          <label className="block text-[10px] font-bold text-gray-900 mb-2 uppercase tracking-widest">{t.minimaxModel}</label>
+                        <div className="bg-white border border-gray-100 p-5">
+                          <label className="block text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-widest">{t.minimaxModel}</label>
                           <input 
                             type="text" 
                             value={appState.minimaxModel}
                             onChange={e => updateState('minimaxModel', e.target.value)}
-                            className="w-full bg-white border border-gray-100 p-3 text-xs outline-none focus:border-gray-900/30 transition-colors"
+                            className="w-full bg-gray-50 border border-gray-100 p-3 text-xs outline-none focus:border-gray-900/30 transition-colors font-mono"
                             placeholder="abab6.5s-chat"
                           />
                         </div>
                       </div>
                     </section>
-
-                    <section>
-                      <div className="space-y-4">
-                        <div className="bg-white border border-[#2D2D2D]/10 p-5">
-                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 ml-1">快速预设</h3>
-                            <div className="flex flex-wrap gap-2">
-                              {[
-                                { id: 'openai', label: 'OpenAI', url: 'https://api.openai.com/v1' },
-                                { id: 'deepseek', label: 'DeepSeek', url: 'https://api.deepseek.com' },
-                                { id: 'groq', label: 'Groq', url: 'https://api.groq.com/openai/v1' },
-                                { id: 'custom', label: '自定义', url: '' },
-                              ].map(p => (
-                                <button 
-                                  key={p.id}
-                                  onClick={() => {
-                                    updateState('apiProvider', p.id);
-                                    if (p.url) updateState('apiBaseUrl', p.url);
-                                  }}
-                                  className={cn(
-                                    "px-3 py-1.5 rounded-full text-[10px] font-bold transition-all border",
-                                    appState.apiProvider === p.id 
-                                      ? "bg-pink-200 text-white border-pink-200 shadow-sm" 
-                                      : "bg-white text-gray-400 border-pink-50 hover:border-pink-100"
-                                  )}
-                                >
-                                  {p.label}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Connection Card */}
-                          <div className="bg-white rounded-3xl p-6 border border-pink-50 shadow-sm space-y-5">
-                            <div className="flex items-center justify-between mb-1">
-                              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">连接配置</h3>
-                              {appState.apiKey ? (
-                                <div className="flex items-center gap-1 text-[10px] text-green-400 font-bold bg-green-50 px-2 py-0.5 rounded-full">
-                                  <CheckCircle2 className="w-2.5 h-2.5" /> 已配置
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-1 text-[10px] text-amber-400 font-bold bg-amber-50 px-2 py-0.5 rounded-full">
-                                  <AlertCircle className="w-2.5 h-2.5" /> 未连接
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Base URL */}
-                            <div className="space-y-2">
-                              <label className="text-[11px] font-bold text-gray-400 flex items-center gap-1.5 ml-1">
-                                <Globe className="w-3 h-3" /> API 网站
-                              </label>
-                              <input 
-                                type="text" 
-                                value={appState.apiBaseUrl}
-                                onChange={(e) => updateState('apiBaseUrl', e.target.value)}
-                                placeholder="https://api.openai.com/v1"
-                                className="w-full px-4 py-2.5 bg-pink-50/30 border border-pink-50 rounded-xl text-xs text-gray-500 outline-none focus:border-pink-200 transition-colors"
-                              />
-                            </div>
-
-                            {/* API Key */}
-                            <div className="space-y-2">
-                              <label className="text-[11px] font-bold text-gray-400 flex items-center gap-1.5 ml-1">
-                                <Key className="w-3 h-3" /> API 密钥
-                              </label>
-                              <input 
-                                type="password" 
-                                value={appState.apiKey}
-                                onChange={(e) => updateState('apiKey', e.target.value)}
-                                placeholder="sk-..."
-                                className="w-full px-4 py-2.5 bg-pink-50/30 border border-pink-50 rounded-xl text-xs text-gray-500 outline-none focus:border-pink-200 transition-colors"
-                              />
-                            </div>
-
-                            <button 
-                              onClick={async () => {
-                                if (!appState.apiKey) return;
-                                const btn = document.getElementById('test-conn-btn');
-                                if (btn) btn.innerText = '测试中...';
-                                try {
-                                  const res = await fetch(`${appState.apiBaseUrl.replace(/\/$/, '')}/models`, {
-                                    headers: { 'Authorization': `Bearer ${appState.apiKey}` }
-                                  });
-                                  if (res.ok) {
-                                    if (btn) btn.innerText = '连接成功 ✨';
-                                    setTimeout(() => { if (btn) btn.innerText = '测试连接'; }, 2000);
-                                  } else {
-                                    throw new Error();
-                                  }
-                                } catch (e) {
-                                  if (btn) btn.innerText = '连接失败 ❌';
-                                  setTimeout(() => { if (btn) btn.innerText = '测试连接'; }, 2000);
-                                }
-                              }}
-                              id="test-conn-btn"
-                              className="w-full py-2.5 bg-pink-100/50 text-pink-400 text-[11px] font-bold rounded-xl border border-pink-100 hover:bg-pink-100 transition-colors"
-                            >
-                              测试连接
-                            </button>
-                          </div>
-
-                          {/* Model Card */}
-                          <div className="bg-white rounded-3xl p-6 border border-pink-50 shadow-sm space-y-5">
-                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">模型参数</h3>
-                            
-                            {/* Model Selection */}
-                            <div className="space-y-2">
-                              <div className="flex justify-between items-center ml-1">
-                                <label className="text-[11px] font-bold text-gray-400 flex items-center gap-1.5">
-                                  <Grid className="w-3 h-3" /> AI 模型
-                                </label>
-                                <button 
-                                  onClick={async () => {
-                                    if (!appState.apiKey) return;
-                                    try {
-                                      const res = await fetch(`${appState.apiBaseUrl.replace(/\/$/, '')}/models`, {
-                                        headers: { 'Authorization': `Bearer ${appState.apiKey}` }
-                                      });
-                                      const data = await res.json();
-                                      if (data.data) {
-                                        const models = data.data.map((m: any) => m.id);
-                                        updateState('availableModels', models);
-                                      }
-                                    } catch (e) {
-                                      console.error('Fetch models failed', e);
-                                    }
-                                  }}
-                                  className="text-[10px] text-pink-300 font-bold flex items-center gap-1 hover:text-pink-400 transition-colors"
-                                >
-                                  <RefreshCw className="w-2.5 h-2.5" /> 拉取模型
-                                </button>
-                              </div>
-
-                              {appState.availableModels.length > 0 && (
-                                <div className="relative mb-2">
-                                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-300" />
-                                  <input 
-                                    type="text"
-                                    value={appState.modelFilter}
-                                    onChange={(e) => updateState('modelFilter', e.target.value)}
-                                    placeholder="搜索模型..."
-                                    className="w-full pl-8 pr-4 py-2 bg-pink-50/20 border border-pink-50 rounded-lg text-[10px] text-gray-500 outline-none"
-                                  />
-                                </div>
-                              )}
-
-                              {appState.availableModels.length > 0 ? (
-                                <select 
-                                  value={appState.selectedModel}
-                                  onChange={(e) => updateState('selectedModel', e.target.value)}
-                                  className="w-full px-4 py-2.5 bg-pink-50/30 border border-pink-50 rounded-xl text-xs text-gray-500 outline-none focus:border-pink-200 transition-colors appearance-none"
-                                >
-                                  {appState.availableModels
-                                    .filter(m => m.toLowerCase().includes(appState.modelFilter.toLowerCase()))
-                                    .map(m => (
-                                      <option key={m} value={m}>{m}</option>
-                                    ))}
-                                </select>
-                              ) : (
-                                <input 
-                                  type="text" 
-                                  value={appState.selectedModel}
-                                  onChange={(e) => updateState('selectedModel', e.target.value)}
-                                  placeholder="gpt-3.5-turbo"
-                                  className="w-full px-4 py-2.5 bg-pink-50/30 border border-pink-50 rounded-xl text-xs text-gray-500 outline-none focus:border-pink-200 transition-colors"
-                                />
-                              )}
-                            </div>
-
-                            {/* Temperature */}
-                            <div className="space-y-2">
-                              <div className="flex justify-between items-center ml-1">
-                                <label className="text-[11px] font-bold text-gray-400 flex items-center gap-1.5">
-                                  <Thermometer className="w-3 h-3" /> 模型温度
-                                </label>
-                                <span className="text-[10px] text-pink-300 font-bold">{appState.temperature}</span>
-                              </div>
-                              <input 
-                                type="range" 
-                                min="0" 
-                                max="2" 
-                                step="0.1"
-                                value={isNaN(appState.temperature) ? 0.7 : appState.temperature}
-                                onChange={(e) => {
-                                  const val = parseFloat(e.target.value);
-                                  updateState('temperature', isNaN(val) ? 0.7 : val);
-                                }}
-                                className="w-full accent-pink-200 h-1.5 bg-pink-50 rounded-lg appearance-none cursor-pointer"
-                              />
-                            </div>
-
-                            {/* Context Length */}
-                            <div className="space-y-2">
-                              <div className="flex justify-between items-center ml-1">
-                                <label className="text-[11px] font-bold text-gray-400 flex items-center gap-1.5">
-                                  <History className="w-3 h-3" /> 上下文长度
-                                </label>
-                                <span className="text-[10px] text-pink-300 font-bold">{appState.contextLength} 条</span>
-                              </div>
-                              <input 
-                                type="range" 
-                                min="1" 
-                                max="50" 
-                                step="1"
-                                value={isNaN(appState.contextLength) ? 10 : appState.contextLength}
-                                onChange={(e) => {
-                                  const val = parseInt(e.target.value);
-                                  updateState('contextLength', isNaN(val) ? 10 : val);
-                                }}
-                                className="w-full accent-pink-200 h-1.5 bg-pink-50 rounded-lg appearance-none cursor-pointer"
-                              />
-                            </div>
-
-                            {/* System Prompt */}
-                            <div className="space-y-2">
-                              <label className="text-[11px] font-bold text-gray-400 flex items-center gap-1.5 ml-1">
-                                <FileText className="w-3 h-3" /> 系统提示词 (Prompt)
-                              </label>
-                              <textarea 
-                                value={appState.systemPrompt}
-                                onChange={(e) => updateState('systemPrompt', e.target.value)}
-                                rows={3}
-                                className="w-full px-4 py-3 bg-pink-50/30 border border-pink-50 rounded-2xl text-xs text-gray-500 outline-none focus:border-pink-200 transition-colors resize-none leading-relaxed"
-                                placeholder="设定 AI 的性格和说话风格..."
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </section>
-                    </div>
+                  </div>
                   ) : activeCategory === 'worldbook' ? (
                     <section>
                       <div className="bg-white rounded-3xl p-8 border border-pink-50 shadow-sm text-center">
@@ -2093,7 +2260,7 @@ export default function App() {
                           <h4 className="text-xs font-bold text-gray-900 mb-4 uppercase tracking-widest">主屏幕字体颜色</h4>
                           <div className="grid grid-cols-5 gap-3">
                             {[
-                              "#9CA3AF", // Default
+                              "#374151", // Default
                               "#111827", // Dark
                               "#FFFFFF", // White
                               "#F27D26", // Retro Orange
@@ -2333,7 +2500,7 @@ export default function App() {
               <div />
             )}
           </AnimatePresence>
-        <OurTale isOpen={isOurTaleOpen} onClose={() => setIsOurTaleOpen(false)} />
+        <OurTale isOpen={isOurTaleOpen} onClose={() => setIsOurTaleOpen(false)} isFullscreen={appState.isFullscreen} />
 
         <FloatingBall 
           show={appState.showFloatingBall} 
@@ -2363,5 +2530,6 @@ export default function App() {
         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-32 h-1 bg-gray-200 rounded-full z-30" />
       </div>
     </div>
+  </div>
   );
 }

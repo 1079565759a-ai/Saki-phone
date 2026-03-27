@@ -42,9 +42,10 @@ interface ChatMessage {
 interface HeartLinkAppProps {
   onClose: () => void;
   language: 'zh' | 'en';
+  isFullscreen?: boolean;
 }
 
-const HeartLinkApp: React.FC<HeartLinkAppProps> = ({ onClose, language: initialLanguage }) => {
+const HeartLinkApp: React.FC<HeartLinkAppProps> = ({ onClose, language: initialLanguage, isFullscreen }) => {
   const [currentLanguage, setCurrentLanguage] = useState<'zh' | 'en'>(initialLanguage || 'zh');
   const [activeTab, setActiveTab] = useState<'match' | 'chat' | 'profile'>('match');
   const [history, setHistory] = useState<AICharacter[]>([]);
@@ -605,9 +606,11 @@ const HeartLinkApp: React.FC<HeartLinkAppProps> = ({ onClose, language: initialL
       {/* Header */}
       <div className="pt-12 pb-6 px-8 flex items-center justify-between border-b border-gray-100 bg-white/90 backdrop-blur-md sticky top-0 z-10">
         <div className="flex items-center gap-4">
-          <button onClick={onClose} className="p-1 -ml-1 text-gray-400 hover:text-gray-900 transition-colors">
-            <ArrowLeft strokeWidth={1.5} size={20} />
-          </button>
+          {!isFullscreen && (
+            <button onClick={onClose} className="p-1 -ml-1 text-gray-400 hover:text-gray-900 transition-colors">
+              <ArrowLeft strokeWidth={1.5} size={20} />
+            </button>
+          )}
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
               <Heart size={10} className="text-pink-400 fill-pink-400" />

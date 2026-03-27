@@ -51,9 +51,10 @@ interface Cine2AppProps {
   onClose: () => void;
   aiName: string;
   aiAvatar: string;
+  isFullscreen?: boolean;
 }
 
-const Cine2App: React.FC<Cine2AppProps> = ({ onClose, aiName, aiAvatar }) => {
+const Cine2App: React.FC<Cine2AppProps> = ({ onClose, aiName, aiAvatar, isFullscreen }) => {
   const [activeTab, setActiveTab] = useState<'rating' | 'history' | 'profile'>('rating');
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const [isWatching, setIsWatching] = useState(false);
@@ -347,9 +348,11 @@ const Cine2App: React.FC<Cine2AppProps> = ({ onClose, aiName, aiAvatar }) => {
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="p-4 pt-12 flex items-center justify-between border-b border-[#2D2D2D]/5 bg-[#FDFCF8]/80 backdrop-blur-md sticky top-0 z-10">
-            <button onClick={onClose} className="p-2 hover:bg-black/5 rounded-full transition-colors">
-              <ArrowLeft size={20} />
-            </button>
+            {!isFullscreen && (
+              <button onClick={onClose} className="p-2 hover:bg-black/5 rounded-full transition-colors">
+                <ArrowLeft size={20} />
+              </button>
+            )}
             <div className="flex items-center gap-2">
               <Film size={20} className="text-[#2D2D2D]" />
               <span className="font-bold text-sm tracking-widest uppercase">Cine2</span>

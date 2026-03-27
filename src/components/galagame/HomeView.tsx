@@ -48,7 +48,7 @@ const HomeView: React.FC<HomeViewProps> = ({ onSelectGame, onOpenStore, onImport
         <button onClick={onOpenStore} className="p-2 hover:bg-gray-50 transition-colors">
           <ShoppingBag className="w-5 h-5 text-gray-900" strokeWidth={1.5} />
         </button>
-        <h1 className="text-[10px] font-serif italic font-bold tracking-[0.3em] uppercase text-gray-900">GalaGame</h1>
+        <h1 className="text-[10px] font-serif italic font-bold tracking-[0.3em] uppercase text-gray-900">樱咲Gal机</h1>
         <button onClick={onImportGame} className="p-2 hover:bg-gray-50 transition-colors">
           <MoreHorizontal className="w-5 h-5 text-gray-900" strokeWidth={1.5} />
         </button>
