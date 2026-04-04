@@ -15,15 +15,13 @@ interface LoginScreenProps {
   onLogin: (user: User) => void;
 }
 
-const DEFAULT_AVATAR = "https://user6496.cn.imgto.link/public/20260403/quality-restoration-20260404013737997.avif";
-
 export default function LoginScreen({ registeredUser, onRegister, onLogin }: LoginScreenProps) {
   const [isSignUp, setIsSignUp] = useState(!registeredUser);
   const [nickname, setNickname] = useState('');
   const [password, setPassword] = useState('');
-  const [avatar, setAvatar] = useState<string | null>(null);
+  const [avatar, setAvatar] = useState<string | null>("https://user6496.cn.imgto.link/public/20260403/quality-restoration-20260404013737997.avif");
   const [showPassword, setShowPassword] = useState(false);
-  const [agreed, setAgreed] = useState(false);
+  const [addMoreInfo, setAddMoreInfo] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -50,19 +48,15 @@ export default function LoginScreen({ registeredUser, onRegister, onLogin }: Log
 
   const validate = () => {
     if (!nickname.trim()) {
-      setError('昵称不能为空');
+      setError('Nickname cannot be empty');
       return false;
     }
     if (nickname.length > 20) {
-      setError('昵称长度需在1-20个字符之间');
+      setError('Nickname must be 1-20 characters');
       return false;
     }
     if (password.length < 6 || password.length > 20) {
-      setError('密码长度需在6-20个字符之间');
-      return false;
-    }
-    if (isSignUp && !agreed) {
-      setError('请先同意用户协议');
+      setError('Password must be 6-20 characters');
       return false;
     }
     setError(null);
@@ -74,19 +68,15 @@ export default function LoginScreen({ registeredUser, onRegister, onLogin }: Log
 
     if (isSignUp) {
       if (registeredUser && registeredUser.nickname === nickname) {
-        setError('该昵称已被注册');
+        setError('This nickname is already taken');
         return;
       }
-      onRegister({ nickname, password, avatar: avatar || DEFAULT_AVATAR });
+      onRegister({ nickname, password, avatar });
     } else {
-      if (!registeredUser) {
-        setError('请先完成注册再登录');
-        return;
-      }
-      if (registeredUser.nickname === nickname && registeredUser.password === password) {
+      if (registeredUser && registeredUser.nickname === nickname && registeredUser.password === password) {
         onLogin(registeredUser);
       } else {
-        setError('账号或密码不正确');
+        setError('Invalid ID or password');
       }
     }
   };
@@ -103,7 +93,7 @@ export default function LoginScreen({ registeredUser, onRegister, onLogin }: Log
         {/* Header */}
         <div className="pt-6 px-6 pb-4 text-center">
           <h1 className="text-[20px] font-semibold text-black">
-            {isSignUp ? '注册账号' : '登录'}
+            {isSignUp ? 'Create an account' : 'Log In'}
           </h1>
         </div>
 
@@ -111,32 +101,28 @@ export default function LoginScreen({ registeredUser, onRegister, onLogin }: Log
         <div className="px-6 pb-4 flex justify-center">
           <div className="flex w-[80%] bg-gray-50 rounded-[12px] p-1">
             <button 
-              onClick={() => {
-                setIsSignUp(true);
-                setError(null);
-              }}
+              onClick={() => setIsSignUp(true)}
               className={cn(
                 "flex-1 py-2 text-[14px] font-medium rounded-[10px] transition-all",
                 isSignUp ? "bg-white text-black shadow-sm" : "text-[#666666]"
               )}
             >
-              注册
+              Sign Up
             </button>
             <button 
               onClick={() => {
                 if (!registeredUser) {
-                  setError('请先完成注册再登录');
+                  alert('Please register an account first');
                   return;
                 }
                 setIsSignUp(false);
-                setError(null);
               }}
               className={cn(
                 "flex-1 py-2 text-[14px] font-medium rounded-[10px] transition-all",
                 !isSignUp ? "bg-white text-black shadow-sm" : "text-[#666666]"
               )}
             >
-              登录
+              Log In
             </button>
           </div>
         </div>
@@ -147,20 +133,14 @@ export default function LoginScreen({ registeredUser, onRegister, onLogin }: Log
             onClick={handleAvatarClick}
             className="w-[80px] h-[80px] rounded-full bg-[#F0F0F0] border border-[#E5E5E5] flex items-center justify-center overflow-hidden cursor-pointer relative group"
           >
-            {(avatar || (registeredUser && !isSignUp && registeredUser.avatar)) ? (
+            {avatar || (registeredUser && !isSignUp && registeredUser.avatar) ? (
               <img 
-                src={isSignUp ? (avatar || DEFAULT_AVATAR) : (registeredUser?.avatar || DEFAULT_AVATAR)} 
+                src={isSignUp ? (avatar || '') : (registeredUser?.avatar || '')} 
                 alt="Avatar" 
                 className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
               />
             ) : (
-              <img 
-                src={DEFAULT_AVATAR} 
-                alt="Default Avatar" 
-                className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
-              />
+              <Camera className="w-6 h-6 text-[#666666]" />
             )}
             <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
               <Camera className="w-5 h-5 text-white" />
@@ -179,14 +159,14 @@ export default function LoginScreen({ registeredUser, onRegister, onLogin }: Log
         <div className="px-6 space-y-4">
           {/* Nickname */}
           <div className="space-y-2">
-            <label className="text-[14px] text-[#666666] font-normal block ml-1">昵称</label>
+            <label className="text-[14px] text-[#666666] font-normal block ml-1">Your ID</label>
             <div className={cn(
               "w-full h-[48px] rounded-[12px] border bg-white flex items-center px-4 transition-colors",
-              error && (error.includes('昵称') || error.includes('账号')) ? "border-red-400" : "border-[#E5E5E5]"
+              error && error.includes('ID') ? "border-red-400" : "border-[#E5E5E5]"
             )}>
               <input 
                 type="text"
-                placeholder="请输入昵称"
+                placeholder="Enter your ID"
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
                 className="w-full bg-transparent outline-none text-[16px] text-black placeholder:text-[#999999]"
@@ -196,17 +176,20 @@ export default function LoginScreen({ registeredUser, onRegister, onLogin }: Log
 
           {/* Password */}
           <div className="space-y-2">
-            <label className="text-[14px] text-[#666666] font-normal block ml-1">密码</label>
+            <label className="text-[14px] text-[#666666] font-normal block ml-1">Password</label>
             <div className={cn(
               "w-full h-[48px] rounded-[12px] border bg-white flex items-center px-4 transition-colors relative",
-              error && (error.includes('密码') || error.includes('账号')) ? "border-red-400" : "border-[#E5E5E5]"
+              error && error.includes('Password') ? "border-red-400" : "border-[#E5E5E5]"
             )}>
               <input 
                 type={showPassword ? "text" : "password"}
-                placeholder="6-20个字符"
+                placeholder="6-20 characters"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-transparent outline-none text-[16px] text-black placeholder:text-[#999999] pr-10"
+                className={cn(
+                  "w-full bg-transparent outline-none pr-10 placeholder:text-[#999999]",
+                  !showPassword ? "text-[#999999] text-[10px]" : "text-[16px] text-black"
+                )}
               />
               <button 
                 onClick={() => setShowPassword(!showPassword)}
@@ -228,17 +211,17 @@ export default function LoginScreen({ registeredUser, onRegister, onLogin }: Log
             </motion.p>
           )}
 
-          {/* Agreement Checkbox */}
+          {/* Additional Info Checkbox */}
           {isSignUp && (
             <div className="flex items-center gap-2 py-2">
               <button 
-                onClick={() => setAgreed(!agreed)}
+                onClick={() => setAddMoreInfo(!addMoreInfo)}
                 className={cn(
                   "w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors",
-                  agreed ? "bg-[#07C160] border-[#07C160]" : "border-[#E5E5E5] bg-white"
+                  addMoreInfo ? "bg-[#FFB6C1] border-[#FFB6C1]" : "border-[#E5E5E5] bg-white"
                 )}
               >
-                {agreed && <Check className="w-3 h-3 text-white" />}
+                {addMoreInfo && <Check className="w-3 h-3 text-white" />}
               </button>
               <span className="text-[14px] text-[#666666]">I agree to the User Agreement</span>
             </div>
@@ -258,7 +241,7 @@ export default function LoginScreen({ registeredUser, onRegister, onLogin }: Log
                 : "bg-[#CCCCCC] text-white cursor-not-allowed"
             )}
           >
-            {isSignUp ? '注册账号' : '登录'}
+            {isSignUp ? 'Create Account' : 'Log In'}
           </motion.button>
         </div>
       </motion.div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { ChevronLeft, X } from 'lucide-react';
 import { cn } from '../utils/cn';
 import LoginScreen from './LoginScreen';
@@ -36,7 +36,7 @@ export default function WeChatApp({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className={cn(
-          "absolute inset-0 z-50 bg-white",
+          "absolute inset-0 bg-[#F5F5F7]",
           isFullscreen && "pt-safe pb-safe"
         )}
       >
@@ -60,7 +60,7 @@ export default function WeChatApp({
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
       className={cn(
-        "absolute inset-0 z-50 bg-white flex flex-col overflow-hidden",
+        "absolute inset-0 bg-white flex flex-col overflow-hidden",
         isFullscreen && "pt-safe pb-safe"
       )}
     >

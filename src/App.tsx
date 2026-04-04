@@ -1453,7 +1453,7 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        <AnimatePresence mode="wait">
+        <div className="flex-1 relative">
           {!isChatOpen && !isSettingsOpen && !isGalaGameOpen && !isRadioOpen && !isCine2Open && !isHeartLinkOpen && !isPhotoOpen && !isCharOpen && !isStudyRoomOpen && !isLuckyOpen && !isMemoryOpen ? (
             <motion.div 
               key="home"
@@ -1862,7 +1862,7 @@ export default function App() {
               </div>
             </motion.div>
           ) : isChatOpen ? (
-            <motion.div key="wechat" className="absolute inset-0 z-30">
+            <motion.div key="wechat" className="absolute inset-0 z-[9999] bg-white">
               <WeChatApp 
                 onClose={() => setIsChatOpen(false)} 
                 isFullscreen={effectiveFullscreen}
@@ -2636,7 +2636,7 @@ export default function App() {
             ) : (
               <div />
             )}
-          </AnimatePresence>
+        </div>
         <OurTale isOpen={isOurTaleOpen} onClose={() => setIsOurTaleOpen(false)} isFullscreen={effectiveFullscreen} />
 
         <FloatingBall 
