@@ -187,7 +187,7 @@ export default function LoginScreen({ registeredUser, onRegister, onLogin }: Log
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className={cn(
-                  "w-full bg-transparent outline-none pr-10 placeholder:text-[#999999]",
+                  "w-full bg-transparent outline-none pr-10 placeholder:text-[#999999] placeholder:text-[16px]",
                   !showPassword ? "text-[#999999] text-[10px]" : "text-[16px] text-black"
                 )}
               />
@@ -195,7 +195,7 @@ export default function LoginScreen({ registeredUser, onRegister, onLogin }: Log
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 p-1 hover:bg-gray-50 rounded-full transition-colors"
               >
-                {showPassword ? <EyeOff className="w-5 h-5 text-[#666666]" /> : <Eye className="w-5 h-5 text-[#666666]" />}
+                {showPassword ? <Eye className="w-5 h-5 text-[#666666]" /> : <EyeOff className="w-5 h-5 text-[#666666]" />}
               </button>
             </div>
           </div>
@@ -218,7 +218,7 @@ export default function LoginScreen({ registeredUser, onRegister, onLogin }: Log
                 onClick={() => setAddMoreInfo(!addMoreInfo)}
                 className={cn(
                   "w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors",
-                  addMoreInfo ? "bg-[#FFB6C1] border-[#FFB6C1]" : "border-[#E5E5E5] bg-white"
+                  addMoreInfo ? "bg-[#FFDEE9] border-[#FFDEE9]" : "border-[#E5E5E5] bg-white"
                 )}
               >
                 {addMoreInfo && <Check className="w-3 h-3 text-white" />}
