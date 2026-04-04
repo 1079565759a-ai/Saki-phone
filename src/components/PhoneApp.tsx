@@ -353,9 +353,9 @@ export default function PhoneApp({ onClose, appState, updateState, isFullscreen 
 
       {/* Bottom Tabs */}
       <div className="h-20 border-t border-black/5 flex items-center justify-around px-6 bg-white/80 backdrop-blur-md">
-        <TabBtn icon={Clock} label="最近通话" active={activeTab === 'history'} onClick={() => setActiveTab('history')} />
-        <TabBtn icon={Users} label="通讯录" active={activeTab === 'contacts'} onClick={() => setActiveTab('contacts')} />
-        <TabBtn icon={Hash} label="拨号" active={activeTab === 'dialer'} onClick={() => setActiveTab('dialer')} />
+        <TabBtn icon={Clock} label="Recent" active={activeTab === 'history'} onClick={() => setActiveTab('history')} />
+        <TabBtn icon={Users} label="Contacts" active={activeTab === 'contacts'} onClick={() => setActiveTab('contacts')} />
+        <TabBtn icon={Hash} label="Dialer" active={activeTab === 'dialer'} onClick={() => setActiveTab('dialer')} />
       </div>
     </motion.div>
   );

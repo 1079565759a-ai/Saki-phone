@@ -90,14 +90,14 @@ export interface OurTaleRootState {
 
 const defaultState: OurTaleState = {
   id: 'mock',
-  partnerName: '宝贝',
+  partnerName: 'Baby',
   coverImage: 'https://picsum.photos/seed/couple/800/400',
   leftAvatar: 'https://picsum.photos/seed/avatar1/200/200',
   rightAvatar: 'https://picsum.photos/seed/avatar2/200/200',
   anniversaries: [
     {
       id: '1',
-      title: '在一起',
+      title: 'Together',
       date: '2023-05-20',
       isPinned: true,
       icon: 'heart',

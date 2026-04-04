@@ -534,21 +534,21 @@ const Cine2App: React.FC<Cine2AppProps> = ({ onClose, aiName, aiAvatar, isFullsc
                 className={cn("flex flex-col items-center gap-1 transition-colors", activeTab === 'rating' ? "text-[#2D2D2D]" : "text-[#A19B8A]")}
               >
                 <Film size={20} className={cn(activeTab === 'rating' && "stroke-[2.5]")} />
-                <span className="text-[10px] font-bold">评分</span>
+                <span className="text-[10px] font-bold">Rating</span>
               </button>
               <button 
                 onClick={() => setActiveTab('history')}
                 className={cn("flex flex-col items-center gap-1 transition-colors", activeTab === 'history' ? "text-[#2D2D2D]" : "text-[#A19B8A]")}
               >
                 <History size={20} className={cn(activeTab === 'history' && "stroke-[2.5]")} />
-                <span className="text-[10px] font-bold">历史</span>
+                <span className="text-[10px] font-bold">History</span>
               </button>
               <button 
                 onClick={() => setActiveTab('profile')}
                 className={cn("flex flex-col items-center gap-1 transition-colors", activeTab === 'profile' ? "text-[#2D2D2D]" : "text-[#A19B8A]")}
               >
                 <User size={20} className={cn(activeTab === 'profile' && "stroke-[2.5]")} />
-                <span className="text-[10px] font-bold">我的</span>
+                <span className="text-[10px] font-bold">Profile</span>
               </button>
             </div>
           )}

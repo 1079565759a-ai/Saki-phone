@@ -399,7 +399,7 @@ const EditableImage = ({
       <img 
         src={src} 
         alt={alt} 
-        className="w-full h-full object-cover"
+        className="w-full h-full object-cover scale-[1.01]"
         referrerPolicy="no-referrer"
       />
       <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white backdrop-blur-[2px]">
@@ -513,7 +513,7 @@ const AppIcon: React.FC<AppIconProps> = ({
           )}
         >
           {iconImg ? (
-            <img src={iconImg} className="w-full h-full object-cover grayscale-[0.2] group-hover:grayscale-0 transition-all" referrerPolicy="no-referrer" />
+            <img src={iconImg} className="w-full h-full object-cover scale-[1.01] grayscale-[0.2] group-hover:grayscale-0 transition-all" referrerPolicy="no-referrer" />
           ) : (
             <Icon className={cn("text-gray-900", iconSizeClasses[size])} />
           )}
@@ -533,17 +533,17 @@ const AppIcon: React.FC<AppIconProps> = ({
           <EditableText 
             value={label || name} 
             onChange={onLabelChange} 
-            className="text-xs font-bold" 
+            className="text-[10px] font-cute font-medium uppercase tracking-[0.12em]" 
             style={{ color: labelColor || "#374151" }}
           />
         ) : (
-          <span className="text-xs font-bold" style={{ color: labelColor || "#374151" }}>{label || name}</span>
+          <span className="text-[10px] font-cute font-medium uppercase tracking-[0.12em]" style={{ color: labelColor || "#374151" }}>{label || name}</span>
         )}
 
         {(showEdit || isEditMode) && onIconChange && (
           <button 
             onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
-            className="mt-1 px-2 py-1 bg-white text-gray-900 text-[8px] font-bold border border-gray-100 shadow-sm hover:bg-gray-900 hover:text-white transition-colors whitespace-nowrap uppercase tracking-widest rounded-lg"
+            className="mt-1 px-2 py-1 bg-white text-gray-900 text-[8px] font-cute font-bold border border-gray-100 shadow-sm hover:bg-gray-900 hover:text-white active:scale-95 transition-all whitespace-nowrap uppercase tracking-[0.15em] rounded-full"
           >
             {translations[language as 'zh' | 'en']?.editMode || 'EDIT'}
           </button>
@@ -892,61 +892,61 @@ export default function App() {
     const saved = typeof window !== 'undefined' ? localStorage.getItem('gala_game_state') : null;
     const initialState = {
       wallpaper: "", // Empty means use default decoration
-      weather: "多云 24°C",
-      profileName: "芙糕",
+      weather: "Cloudy 24°C",
+      profileName: "Fugao",
       profileHandle: "@fugao_2603",
       profileAvatar: "https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAERgJFpq-WeW_-xUHBIWvNPyriVIFcZGAACpx4AAlIUYFXjvsH9dX3zKzoE.jpeg",
       profileHeaderImg: "https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAERgL1pq-8bYFXZ45sTyVidlw1OsWmHnQAC_B4AAlIUYFWmODBidfrEoDoE.jpeg",
-      searchBarText: "阿嗚一口吃掉泥૮  ´͈ ᗜ `͈ ა♡",
-      profileQuote: "雪花飘落在你鼻尖，快分不清楚",
-      profileLocation: "櫻",
+      searchBarText: "A bite of you ૮  ´͈ ᗜ `͈ ა♡",
+      profileQuote: "Snowflakes falling on your nose",
+      profileLocation: "Sakura",
       widgetTitle: "Heartlink",
       widgetDollImg: "https://picsum.photos/seed/bear/200/200",
-      widgetStatus: "为你匹配到心动对象",
-      widgetTime: "00:14 上午",
-      widgetBtn1: "同意",
-      widgetBtn2: "拒絕",
+      widgetStatus: "Matched with your crush",
+      widgetTime: "00:14 AM",
+      widgetBtn1: "Accept",
+      widgetBtn2: "Decline",
       widgetFooter: "heartlink",
       moviePoster: "https://picsum.photos/seed/movie/300/400",
       photoImg: "https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAERgJZpq-bLvBlK1SYtc8wdPdXnUsm6EgACuR4AAlIUYFXDE6PqfxzymToE.jpeg",
       photoCaption: "Sweet Moment",
       anniversaryCharPhoto: "https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAERkRVpruK1LMxtGyyl5aID78ukxfYQiwAChRwAAnZPeFXFwLHbPLeAFjoE.png",
       anniversaryUserPhoto: "https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAERkRlpruO1xtAIwmST3FjrdqyRsxbmmAACihwAAnZPeFXzOYhW1rulGToE.png",
-      anniversaryDays: "77天",
-      anniversaryTitle: "我们已经相爱",
+      anniversaryDays: "77 days",
+      anniversaryTitle: "We have been in love",
       anniversaryCharLabel: "char",
       anniversaryUserLabel: "user",
       ourTaleCover: "https://picsum.photos/seed/cover/600/400",
       ourTaleLeftAvatar: "https://picsum.photos/seed/girl/200/200",
       ourTaleRightAvatar: "https://picsum.photos/seed/boy/200/200",
       anniversaries: [
-        { id: '1', title: '相恋', date: '2023-12-20', isPinned: true },
-        { id: '2', title: '第一次旅行', date: '2024-05-01', isPinned: false }
+        { id: '1', title: 'In Love', date: '2023-12-20', isPinned: true },
+        { id: '2', title: 'First Trip', date: '2024-05-01', isPinned: false }
       ],
-      chatAiName: "福熊兒",
+      chatAiName: "Beary",
       chatAiAvatar: "https://picsum.photos/seed/bear/100/100",
-      chatStatus: "在线",
+      chatStatus: "Online",
       charCharacters: [
         {
           id: 'char-1',
-          name: '林深',
-          title: '森林守护者',
+          name: 'Lin Shen',
+          title: 'Forest Guardian',
           avatar: 'https://picsum.photos/seed/forest/200/200',
-          tags: ['温柔', '神秘', '自然'],
-          description: '居住在迷雾森林深处的守护者，拥有与植物沟通的能力。',
-          persona: '你是一个温柔、神秘的森林守护者，说话轻声细语，经常引用自然的意象。',
-          greeting: '旅人，欢迎来到这片森林。这里的风会告诉你所有的秘密。',
+          tags: ['Gentle', 'Mysterious', 'Nature'],
+          description: 'A guardian living deep in the misty forest, with the ability to communicate with plants.',
+          persona: 'You are a gentle and mysterious forest guardian. You speak softly and often use natural imagery.',
+          greeting: 'Traveler, welcome to this forest. The wind here will tell you all the secrets.',
           affection: 60,
-          mood: '宁静',
+          mood: 'Serene',
           isFavorite: true
         }
       ],
       personaMasks: [
         {
           id: 'mask-1',
-          name: '好奇的旅人',
+          name: 'Curious Traveler',
           avatar: 'https://picsum.photos/seed/traveler/200/200',
-          description: '一个对世界充满好奇，四处游历的旅人。',
+          description: 'A traveler full of curiosity about the world, wandering everywhere.',
           boundCharacterIds: []
         }
       ],
@@ -979,7 +979,7 @@ export default function App() {
       temperature: 0.7,
       contextLength: 10,
       apiProvider: "custom", // 'openai', 'deepseek', 'groq', 'custom'
-      systemPrompt: "你是一个温柔、贴心的AI伙伴，说话风格带有INS奶白风的甜美感，经常使用可爱的表情符号。",
+      systemPrompt: "You are a gentle and caring AI partner. Your speaking style is sweet and creamy, often using cute emojis.",
       language: "zh",
       photoFilter: "color",
       homeScreenStyle: "creamy", // 'classic', 'creamy'
@@ -991,22 +991,26 @@ export default function App() {
       aiPhoneNumber: "520-1314",
       userPhoneNumber: "188-8888-8888",
       isFullscreen: false,
+      isLoggedIn: false,
+      autoLogin: true,
+      registeredUser: null as { nickname: string; password: string; avatar: string | null } | null,
+      currentUser: null as { nickname: string; password: string; avatar: string | null } | null,
       appLabels: {
-        heartlink: "心动链接",
-        chat: "聊天",
-        ourtale: "我们的故事",
-        moment: "瞬间",
-        galagame: "Gala游戏",
-        phone: "电话",
-        messages: "消息",
-        settings: "设置",
-        cine2: "影院",
-        radio: "电台",
-        photo: "相册",
-        char: "角色档案",
-        study: "自习室",
-        lucky: "幸运签",
-        memory: "记忆碎片"
+        heartlink: "HEARTLINK",
+        chat: "CHAT",
+        ourtale: "OURTALE",
+        moment: "MOMENT",
+        galagame: "GALAGAME",
+        phone: "PHONE",
+        messages: "MESSAGES",
+        settings: "SETTINGS",
+        cine2: "CINEMA",
+        radio: "RADIO",
+        photo: "PHOTOS",
+        char: "CHARACTERS",
+        study: "STUDY",
+        lucky: "LUCKY",
+        memory: "MEMORY"
       } as Record<string, string>,
       appIcons: {
         heartlink: null,
@@ -1058,10 +1062,84 @@ export default function App() {
     return initialState;
   });
 
+  // Standalone mode detection
+  const [isStandalone, setIsStandalone] = useState(false);
+
+  useEffect(() => {
+    const checkStandalone = () => {
+      const isStandaloneMode = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
+      setIsStandalone(isStandaloneMode);
+    };
+    checkStandalone();
+    const mediaQuery = window.matchMedia('(display-mode: standalone)');
+    mediaQuery.addEventListener('change', checkStandalone);
+    return () => mediaQuery.removeEventListener('change', checkStandalone);
+  }, []);
+
+  const effectiveFullscreen = appState.isFullscreen || isStandalone;
+
   // Persist state
   useEffect(() => {
     localStorage.setItem('gala_game_state', JSON.stringify(appState));
   }, [appState]);
+
+  // Migration: Ensure app labels and home screen text are English for existing users
+  useEffect(() => {
+    const chineseToEnglish: Record<string, string> = {
+      "心动链接": "HeartLink",
+      "聊天": "Chat",
+      "我们的故事": "OurTale",
+      "瞬间": "Moment",
+      "Gala游戏": "GalaGame",
+      "电话": "Phone",
+      "消息": "Messages",
+      "设置": "Settings",
+      "影院": "Cinema",
+      "电台": "Radio",
+      "相册": "Photos",
+      "角色档案": "Characters",
+      "自习室": "Study",
+      "幸运签": "Lucky",
+      "记忆碎片": "Memory"
+    };
+
+    let needsUpdate = false;
+    const newLabels = { ...appState.appLabels };
+
+    Object.entries(newLabels as Record<string, string>).forEach(([key, value]) => {
+      if (chineseToEnglish[value]) {
+        newLabels[key] = chineseToEnglish[value];
+        needsUpdate = true;
+      }
+    });
+
+    const updates: Partial<typeof appState> = {};
+    if (needsUpdate) updates.appLabels = newLabels;
+
+    if (appState.weather === "多云 24°C") updates.weather = "Cloudy 24°C";
+    if (appState.profileName === "芙糕") updates.profileName = "Fugao";
+    if (appState.searchBarText === "阿嗚一口吃掉泥૮  ´͈ ᗜ `͈ ა♡") updates.searchBarText = "A bite of you ૮  ´͈ ᗜ `͈ ა♡";
+    if (appState.profileQuote === "雪花飘落在你鼻尖，快分不清楚") updates.profileQuote = "Snowflakes falling on your nose";
+    if (appState.profileLocation === "櫻") updates.profileLocation = "Sakura";
+    if (appState.widgetStatus === "为你匹配到心动对象") updates.widgetStatus = "Matched with your crush";
+    if (appState.widgetBtn1 === "同意") updates.widgetBtn1 = "Accept";
+    if (appState.widgetBtn2 === "拒絕") updates.widgetBtn2 = "Decline";
+    if (appState.anniversaryTitle === "我们已经相爱") updates.anniversaryTitle = "We have been in love";
+
+    const newAnniversaries = appState.anniversaries.map(a => {
+      if (a.title === "相恋") return { ...a, title: "In Love" };
+      if (a.title === "第一次旅行") return { ...a, title: "First Trip" };
+      return a;
+    });
+    
+    if (JSON.stringify(newAnniversaries) !== JSON.stringify(appState.anniversaries)) {
+      updates.anniversaries = newAnniversaries;
+    }
+
+    if (Object.keys(updates).length > 0) {
+      setAppState(prev => ({ ...prev, ...updates }));
+    }
+  }, []);
 
   const [isEditMode, setIsEditMode] = useState(false);
   const [gridIcons, setGridIcons] = useState(['heartlink', 'chat', 'galagame', 'phone']);
@@ -1072,22 +1150,8 @@ export default function App() {
 
   const t = translations[appState.language as 'zh' | 'en'] || translations.zh;
 
-  // Fullscreen effect
-  useEffect(() => {
-    if (appState.isFullscreen) {
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(err => {
-          console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
-        });
-      }
-    } else {
-      if (document.fullscreenElement) {
-        document.exitFullscreen().catch(err => {
-          console.error(`Error attempting to exit full-screen mode: ${err.message} (${err.name})`);
-        });
-      }
-    }
-  }, [appState.isFullscreen]);
+  // Remove browser fullscreen API logic as requested to not affect browser settings
+  // and handle layout-only fullscreen.
 
   const updateState = (key: keyof typeof appState, value: any) => {
     setAppState(prev => ({ ...prev, [key]: value }));
@@ -1106,6 +1170,29 @@ export default function App() {
       appIcons: { ...prev.appIcons, [key]: value }
     }));
   };
+
+  const handleRegister = (user: any) => {
+    setAppState(prev => ({
+      ...prev,
+      registeredUser: user,
+      currentUser: user,
+      isLoggedIn: true
+    }));
+  };
+
+  const handleLogin = (user: any) => {
+    setAppState(prev => ({
+      ...prev,
+      currentUser: user,
+      isLoggedIn: true
+    }));
+  };
+
+  useEffect(() => {
+    if (appState.autoLogin && appState.registeredUser) {
+      setAppState(prev => ({ ...prev, isLoggedIn: true, currentUser: prev.registeredUser }));
+    }
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -1129,12 +1216,12 @@ export default function App() {
 
   const pinnedAnniversary = appState.anniversaries.find(a => a.isPinned) || appState.anniversaries[0];
   const calculateDays = (dateString: string) => {
-    if (!dateString) return "0天";
+    if (!dateString) return "0 days";
     const start = new Date(dateString);
     const now = currentTime;
     const diffTime = Math.abs(now.getTime() - start.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-    return `${diffDays}天`;
+    return `${diffDays} ${diffDays === 1 ? 'day' : 'days'}`;
   };
   const displayDays = calculateDays(pinnedAnniversary?.date);
 
@@ -1328,7 +1415,7 @@ export default function App() {
       {/* Phone Frame Wrapper */}
       <div className={cn(
         "relative transition-all duration-500 ease-in-out overflow-hidden flex flex-col",
-        appState.isFullscreen 
+        effectiveFullscreen 
           ? "w-full h-full rounded-none border-0" 
           : "w-[390px] h-[844px] rounded-[3rem] border-[8px] border-gray-900 shadow-2xl"
       )}>
@@ -1341,7 +1428,7 @@ export default function App() {
         {/* Background Decoration / Wallpaper */}
         {appState.wallpaper ? (
           <div className="absolute inset-0 z-0">
-            <img src={appState.wallpaper} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            <img src={appState.wallpaper} className="w-full h-full object-cover scale-[1.01]" referrerPolicy="no-referrer" />
             <div className="absolute inset-0 bg-white/30 backdrop-blur-[1px]" />
           </div>
         ) : (
@@ -1361,7 +1448,7 @@ export default function App() {
               onClose={() => setIsPhoneOpen(false)} 
               appState={appState}
               updateState={updateState}
-              isFullscreen={appState.isFullscreen}
+              isFullscreen={effectiveFullscreen}
             />
           )}
         </AnimatePresence>
@@ -1399,7 +1486,7 @@ export default function App() {
                   </div>
                 </div>
                 <div className="text-[10px] font-medium tracking-wider" style={{ color: appState.homeScreenFontColor }}>
-                  {format(currentTime, 'MM月dd日 EEEE')}
+                  {format(currentTime, 'MMMM do, EEEE')}
                 </div>
               </div>
 
@@ -1528,7 +1615,7 @@ export default function App() {
                             {pinnedAnniversary?.title || appState.anniversaryTitle}
                           </span>
                           <span className="text-base font-bold tracking-tighter" style={{ color: appState.homeScreenFontColor }}>
-                            {displayDays.replace('天', ' day')}
+                            {displayDays}
                           </span>
                         </div>
                       </div>
@@ -1778,10 +1865,11 @@ export default function App() {
             <motion.div key="wechat" className="absolute inset-0 z-30">
               <WeChatApp 
                 onClose={() => setIsChatOpen(false)} 
-                appState={appState}
-                updateState={updateState}
-                setIsCharOpen={setIsCharOpen}
-                isFullscreen={appState.isFullscreen}
+                isFullscreen={effectiveFullscreen}
+                isLoggedIn={appState.isLoggedIn}
+                registeredUser={appState.registeredUser}
+                onRegister={handleRegister}
+                onLogin={handleLogin}
               />
             </motion.div>
           ) : isGalaGameOpen ? (
@@ -1789,7 +1877,7 @@ export default function App() {
               <GalaGameApp 
                 onClose={() => setIsGalaGameOpen(false)} 
                 language={appState.language} 
-                isFullscreen={appState.isFullscreen}
+                isFullscreen={effectiveFullscreen}
               />
             </motion.div>
           ) : isRadioOpen ? (
@@ -1797,7 +1885,7 @@ export default function App() {
               <RadioApp 
                 onClose={() => setIsRadioOpen(false)} 
                 language={appState.language} 
-                isFullscreen={appState.isFullscreen}
+                isFullscreen={effectiveFullscreen}
               />
             </motion.div>
           ) : isCine2Open ? (
@@ -1806,7 +1894,7 @@ export default function App() {
                 onClose={() => setIsCine2Open(false)} 
                 aiName={appState.chatAiName}
                 aiAvatar={appState.chatAiAvatar}
-                isFullscreen={appState.isFullscreen}
+                isFullscreen={effectiveFullscreen}
               />
             </motion.div>
           ) : isHeartLinkOpen ? (
@@ -1814,7 +1902,7 @@ export default function App() {
               <HeartLinkApp 
                 onClose={() => setIsHeartLinkOpen(false)} 
                 language={appState.language as 'zh' | 'en'} 
-                isFullscreen={appState.isFullscreen}
+                isFullscreen={effectiveFullscreen}
               />
             </motion.div>
           ) : isPhotoOpen ? (
@@ -1822,7 +1910,7 @@ export default function App() {
               <PhotoApp 
                 onClose={() => setIsPhotoOpen(false)} 
                 language={appState.language} 
-                isFullscreen={appState.isFullscreen}
+                isFullscreen={effectiveFullscreen}
               />
             </motion.div>
           ) : isCharOpen ? (
@@ -1832,28 +1920,28 @@ export default function App() {
                 appState={appState}
                 updateState={updateState}
                 setIsChatOpen={setIsChatOpen}
-                isFullscreen={appState.isFullscreen}
+                isFullscreen={effectiveFullscreen}
               />
             </motion.div>
           ) : isStudyRoomOpen ? (
             <motion.div key="study" className="absolute inset-0 z-30">
               <StudyRoomApp 
                 onClose={() => setIsStudyRoomOpen(false)} 
-                isFullscreen={appState.isFullscreen}
+                isFullscreen={effectiveFullscreen}
               />
             </motion.div>
           ) : isLuckyOpen ? (
             <motion.div key="lucky" className="absolute inset-0 z-30">
               <LuckyApp 
                 onClose={() => setIsLuckyOpen(false)} 
-                isFullscreen={appState.isFullscreen}
+                isFullscreen={effectiveFullscreen}
               />
             </motion.div>
           ) : isMemoryOpen ? (
             <motion.div key="memory" className="absolute inset-0 z-30">
               <MemoryApp 
                 onClose={() => setIsMemoryOpen(false)} 
-                isFullscreen={appState.isFullscreen}
+                isFullscreen={effectiveFullscreen}
               />
             </motion.div>
           ) : isSettingsOpen ? (
@@ -1880,6 +1968,7 @@ export default function App() {
                     interface: t.interface,
                     font: '字体',
                     floating: '悬浮球',
+                    account: '账户',
                     language: t.language,
                     beautify: t.beautify
                   }[activeCategory] : t.settings}
@@ -1899,6 +1988,7 @@ export default function App() {
                       { id: 'icons', label: '图标', icon: Grid },
                       { id: 'font', label: '字体', icon: Type },
                       { id: 'floating', label: '悬浮球', icon: Circle },
+                      { id: 'account', label: '账户', icon: Users },
                       { id: 'worldbook', label: '世界书', icon: Book },
                     ].map(cat => (
                       <button 
@@ -2210,6 +2300,53 @@ export default function App() {
                       </div>
                     </section>
                   </div>
+                  ) : activeCategory === 'account' ? (
+                    <div className="space-y-6">
+                      <div className="bg-white border border-gray-100 p-6 flex flex-col items-center">
+                        <div className="w-20 h-20 rounded-full bg-gray-50 border border-gray-100 overflow-hidden mb-4">
+                          {appState.currentUser?.avatar ? (
+                            <img src={appState.currentUser.avatar} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-300">
+                              <Users className="w-10 h-10" />
+                            </div>
+                          )}
+                        </div>
+                        <h3 className="text-lg font-bold text-gray-900">{appState.currentUser?.nickname}</h3>
+                        <p className="text-xs text-gray-400 mt-1">ID: {appState.currentUser?.nickname}</p>
+                      </div>
+
+                      <div className="space-y-3">
+                        <button 
+                          onClick={() => updateState('autoLogin', !appState.autoLogin)}
+                          className={cn(
+                            "w-full p-5 flex items-center justify-between border transition-all bg-white border-gray-100 text-gray-900"
+                          )}
+                        >
+                          <span className="text-sm font-bold">自动登录</span>
+                          <div className={cn(
+                            "w-8 h-4 rounded-full relative transition-colors",
+                            appState.autoLogin ? "bg-gray-900" : "bg-gray-200"
+                          )}>
+                            <div className={cn(
+                              "absolute top-1 w-2 h-2 rounded-full transition-all",
+                              appState.autoLogin ? "right-1 bg-white" : "left-1 bg-gray-400"
+                            )} />
+                          </div>
+                        </button>
+
+                        <button 
+                          onClick={() => {
+                            updateState('isLoggedIn', false);
+                            setIsSettingsOpen(false);
+                            setActiveCategory(null);
+                          }}
+                          className="w-full p-5 flex items-center justify-center border border-red-100 bg-red-50/30 text-red-600 transition-all active:scale-[0.98]"
+                        >
+                          <span className="text-sm font-bold">退出登录</span>
+                        </button>
+                      </div>
+                    </div>
                   ) : activeCategory === 'worldbook' ? (
                     <section>
                       <div className="bg-white rounded-3xl p-8 border border-pink-50 shadow-sm text-center">
@@ -2500,7 +2637,7 @@ export default function App() {
               <div />
             )}
           </AnimatePresence>
-        <OurTale isOpen={isOurTaleOpen} onClose={() => setIsOurTaleOpen(false)} isFullscreen={appState.isFullscreen} />
+        <OurTale isOpen={isOurTaleOpen} onClose={() => setIsOurTaleOpen(false)} isFullscreen={effectiveFullscreen} />
 
         <FloatingBall 
           show={appState.showFloatingBall} 

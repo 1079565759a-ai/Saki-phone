@@ -196,7 +196,7 @@ function CharList({ characters, onCharClick, onClose, onOpenMasks, onOpenCreate 
         <button onClick={onClose} className="p-2 -ml-2 text-gray-400 hover:text-gray-900 transition-colors">
           <ChevronLeft className="w-6 h-6" />
         </button>
-        <h1 className="text-lg font-bold text-gray-800 font-serif">遇見</h1>
+        <h1 className="text-lg font-bold text-gray-800 font-serif">Meet</h1>
         <button onClick={onOpenMasks} className="p-2 -mr-2 text-gray-400 hover:text-gray-900 transition-colors">
           <User className="w-6 h-6" />
         </button>
@@ -242,7 +242,7 @@ function CharList({ characters, onCharClick, onClose, onOpenMasks, onOpenCreate 
             className="aspect-[3/4] bg-white rounded-3xl border-2 border-dashed border-pink-100 flex flex-col items-center justify-center gap-2 text-pink-200 hover:text-pink-400 hover:border-pink-300 transition-all"
           >
             <Plus className="w-8 h-8" />
-            <span className="text-xs font-bold">创建新角色</span>
+            <span className="text-xs font-bold">Create</span>
           </motion.button>
         </div>
       </div>
@@ -630,21 +630,21 @@ function CreateCharModal({ onClose, onCreate }: { onClose: () => void, onCreate:
               <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="space-y-6">
                 <div className="space-y-4">
                   <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">人格设定 (AI 提示词)</label>
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Persona (AI Prompt)</label>
                     <textarea 
                       value={formData.persona}
                       onChange={e => setFormData(f => ({ ...f, persona: e.target.value }))}
-                      placeholder="描述 AI 应该如何说话和行动..."
+                      placeholder="Describe how the AI should speak and act..."
                       className="w-full bg-transparent outline-none text-sm text-gray-600 h-32 resize-none"
                     />
                   </div>
                   <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">开场白</label>
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Greeting</label>
                     <input 
                       type="text" 
                       value={formData.greeting}
                       onChange={e => setFormData(f => ({ ...f, greeting: e.target.value }))}
-                      placeholder="角色第一次见到你时会说什么？"
+                      placeholder="What will the character say when they first meet you?"
                       className="w-full bg-transparent outline-none text-sm text-gray-600"
                     />
                   </div>
@@ -660,7 +660,7 @@ function CreateCharModal({ onClose, onCreate }: { onClose: () => void, onCreate:
               onClick={handleBack}
               className="px-8 py-4 text-sm font-bold text-gray-400 hover:text-gray-900 transition-colors"
             >
-              上一步
+              Back
             </button>
           )}
           <button 
@@ -668,7 +668,7 @@ function CreateCharModal({ onClose, onCreate }: { onClose: () => void, onCreate:
             disabled={step === 1 && !formData.name}
             className="flex-1 h-14 bg-gray-900 text-white rounded-2xl flex items-center justify-center gap-2 font-bold shadow-xl shadow-gray-200 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100"
           >
-            <span>{step === 2 ? '完成创建' : '下一步'}</span>
+            <span>{step === 2 ? 'Finish' : 'Next'}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>

@@ -56,7 +56,7 @@ const PhotoApp: React.FC<PhotoAppProps> = ({ onClose, language, isFullscreen }) 
   const [albums, setAlbums] = useState<Album[]>(() => {
     const saved = localStorage.getItem('photo_app_albums');
     return saved ? JSON.parse(saved) : [
-      { id: '1', name: '我的相册', photos: [], isShared: false, sharedWith: [] }
+      { id: '1', name: 'My Album', photos: [], isShared: false, sharedWith: [] }
     ];
   });
   const [activeAlbumId, setActiveAlbumId] = useState<string | null>(null);

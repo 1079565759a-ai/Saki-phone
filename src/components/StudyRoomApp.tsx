@@ -78,7 +78,7 @@ const StudyRoomApp: React.FC<StudyRoomAppProps> = ({ onClose, isFullscreen }) =>
       <div className="h-16 px-6 flex items-center justify-between z-10">
         <div className="flex items-center gap-2">
           <BookOpen className="w-5 h-5 text-gray-400" />
-          <span className="text-xs font-bold text-gray-400 uppercase tracking-[0.3em]">自习室</span>
+          <span className="text-xs font-bold text-gray-400 uppercase tracking-[0.3em]">StudyRoom</span>
         </div>
         {!isFullscreen && (
           <button 

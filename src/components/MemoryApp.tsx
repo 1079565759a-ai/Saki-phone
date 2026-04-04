@@ -68,7 +68,7 @@ const MemoryApp: React.FC<MemoryAppProps> = ({ onClose, isFullscreen }) => {
             <Book className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-gray-900 tracking-tight">记忆碎片</h1>
+            <h1 className="text-lg font-bold text-gray-900 tracking-tight">Memories</h1>
             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Memory Fragments</p>
           </div>
         </div>
@@ -88,7 +88,7 @@ const MemoryApp: React.FC<MemoryAppProps> = ({ onClose, isFullscreen }) => {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
           <input 
             type="text" 
-            placeholder="搜索记忆..." 
+            placeholder="Search memories..." 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-gray-50 border border-gray-100 rounded-2xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all"

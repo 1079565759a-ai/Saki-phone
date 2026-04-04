@@ -27,32 +27,32 @@ const LuckyApp: React.FC<LuckyAppProps> = ({ onClose, isFullscreen }) => {
   const fortunes = [
     { 
       id: 1, 
-      title: "大吉", 
-      desc: "万事如意，心想事成。今天会有意想不到的好消息哦！", 
+      title: "Great Luck", 
+      desc: "Everything goes your way. Unexpected good news is coming today!", 
       color: "bg-pink-400", 
       icon: Trophy,
       stats: { love: 5, work: 5, luck: 5 }
     },
     { 
       id: 2, 
-      title: "中吉", 
-      desc: "平稳中带着小确幸。适合去尝试一些新鲜事物。", 
+      title: "Good Luck", 
+      desc: "Steady with small surprises. Perfect time to try something new.", 
       color: "bg-blue-400", 
       icon: Sparkles,
       stats: { love: 4, work: 3, luck: 4 }
     },
     { 
       id: 3, 
-      title: "小吉", 
-      desc: "细水长流的幸运。适合静下心来读一本书。", 
+      title: "Small Luck", 
+      desc: "Gentle stream of fortune. Good for quiet reading.", 
       color: "bg-green-400", 
       icon: Cloud,
       stats: { love: 3, work: 4, luck: 3 }
     },
     { 
       id: 4, 
-      title: "末吉", 
-      desc: "虽然平凡，但也是一种幸福。注意休息，保持好心情。", 
+      title: "Future Luck", 
+      desc: "Simple but happy. Rest well and keep a good mood.", 
       color: "bg-orange-400", 
       icon: Sun,
       stats: { love: 2, work: 3, luck: 2 }

@@ -208,9 +208,9 @@ const RadioApp: React.FC<RadioAppProps> = ({ onClose, language = 'zh', isFullscr
       {/* Bottom Nav */}
       <div className="h-20 bg-[#F4F1EA] border-t border-[#2D2D2D] flex items-center justify-around px-4 pb-4">
         {[
-          { id: 'home', icon: RadioIcon, label: isEn ? 'Picks' : '推荐' },
-          { id: 'together', icon: Users, label: isEn ? 'Together' : '一起听' },
-          { id: 'profile', icon: User, label: isEn ? 'Me' : '我的' },
+          { id: 'home', icon: RadioIcon, label: 'Picks' },
+          { id: 'together', icon: Users, label: 'Together' },
+          { id: 'profile', icon: User, label: 'Me' },
         ].map(tab => (
           <button 
             key={tab.id}

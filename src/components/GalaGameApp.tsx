@@ -55,7 +55,7 @@ const GalaGameApp: React.FC<GalaGameAppProps> = ({ onClose, language = 'zh', isF
           <HomeView 
             onSelectGame={setSelectedGame} 
             onOpenStore={() => setShowStore(true)}
-            onImportGame={() => showToast('作品导入功能开发中...')}
+            onImportGame={() => showToast('Import feature coming soon...')}
           />
         );
       case 'records':
@@ -165,11 +165,11 @@ const GalaGameApp: React.FC<GalaGameAppProps> = ({ onClose, language = 'zh', isF
       {/* Bottom Nav */}
       <div className="h-24 bg-white border-t border-gray-100 flex items-center justify-around px-4 pb-6 z-40">
         {[
-          { id: 'home', icon: Gamepad2, label: '首页' },
-          { id: 'records', icon: History, label: '记录' },
-          { id: 'community', icon: Users, label: '社区' },
-          { id: 'profile', icon: User, label: '我的' },
-          { id: 'my-works', icon: Library, label: '作品' },
+          { id: 'home', icon: Gamepad2, label: 'Home' },
+          { id: 'records', icon: History, label: 'History' },
+          { id: 'community', icon: Users, label: 'Community' },
+          { id: 'profile', icon: User, label: 'Profile' },
+          { id: 'my-works', icon: Library, label: 'Library' },
         ].map(tab => (
           <button 
             key={tab.id}
