@@ -1,57 +1,50 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import React, { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence, Reorder } from 'motion/react';
 import { 
   ChevronLeft, 
-  Heart, 
   Plus, 
-  Sparkles, 
-  Send, 
-  User, 
-  Settings, 
-  MoreHorizontal, 
-  Trash2, 
-  Edit2, 
-  Check, 
   X, 
   Camera, 
-  Smile, 
+  Check,
+  User,
   Image as ImageIcon,
-  MessageCircle,
-  ArrowRight,
-  UserPlus,
+  Edit2,
+  Trash2,
+  Star,
+  Upload,
+  FileText,
+  Type,
+  MoreVertical,
+  Download,
+  Settings as SettingsIcon,
+  Share2,
+  Copy,
+  FileJson,
+  Image as ImageLucide,
+  Key,
   RefreshCw
 } from 'lucide-react';
-import { GoogleGenAI } from "@google/genai";
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-
+import { QRCodeSVG } from 'qrcode.react';
+import { cn } from '../utils/cn';
 import { compressImage } from '../utils/image';
 
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
-
-// --- Interfaces ---
 export interface CharCharacter {
   id: string;
   name: string;
-  title: string;
+  gender: string;
+  age: string;
+  birthday: string;
+  identity: string; // 5th basic info
+  persona: string; // Combined character details
+  openingMessages: string[];
   avatar: string;
-  tags: string[];
-  description: string;
-  persona: string;
-  greeting: string;
-  affection: number;
-  mood: string;
-  isFavorite: boolean;
-}
-
-export interface PersonaMask {
-  id: string;
-  name: string;
-  avatar: string;
-  description: string;
-  boundCharacterIds: string[];
+  backgroundImage: string;
+  isPinned: boolean;
+  // New fields
+  wechatId: string;
+  autoAddUser: boolean;
+  addRequestMsg: string;
+  isFriendApproved: boolean;
 }
 
 interface CharAppProps {
@@ -62,49 +55,98 @@ interface CharAppProps {
   isFullscreen?: boolean;
 }
 
-// --- Components ---
+type ViewMode = 'list' | 'edit' | 'detail' | 'settings';
 
 export default function CharApp({ onClose, appState, updateState, setIsChatOpen, isFullscreen }: CharAppProps) {
-  const [activeTab, setActiveTab] = useState<'list' | 'detail' | 'masks' | 'create'>('list');
-  const [selectedCharId, setSelectedCharId] = useState<string | null>(appState.selectedCharId);
-  const [selectedMaskId, setSelectedMaskId] = useState<string | null>(appState.selectedMaskId);
-  const [isCreating, setIsCreating] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [editingChar, setEditingChar] = useState<CharCharacter | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
   const characters: CharCharacter[] = appState.charCharacters || [];
-  const masks: PersonaMask[] = appState.personaMasks || [];
-  const selectedChar = characters.find(c => c.id === selectedCharId) || null;
 
-  useEffect(() => {
-    updateState('selectedCharId', selectedCharId);
-  }, [selectedCharId]);
-
-  useEffect(() => {
-    updateState('selectedMaskId', selectedMaskId);
-  }, [selectedMaskId]);
-
-  const handleCharClick = (char: CharCharacter) => {
-    setSelectedCharId(char.id);
-    setActiveTab('detail');
-  };
-
-  const handleCreateChar = (newChar: CharCharacter) => {
-    const updatedChars = [...characters, newChar];
+  const handleSave = (char: CharCharacter) => {
+    let updatedChars;
+    const existingIndex = characters.findIndex(c => c.id === char.id);
+    if (existingIndex >= 0) {
+      updatedChars = characters.map(c => c.id === char.id ? char : c);
+    } else {
+      updatedChars = [...characters, char];
+    }
     updateState('charCharacters', updatedChars);
-    setIsCreating(false);
+    setViewMode('list');
+    setEditingChar(null);
   };
 
-  const handleUpdateChar = (updatedChar: CharCharacter) => {
-    const updatedChars = characters.map(c => c.id === updatedChar.id ? updatedChar : c);
-    updateState('charCharacters', updatedChars);
-  };
-
-  const handleDeleteChar = (id: string) => {
+  const handleDelete = (id: string) => {
     const updatedChars = characters.filter(c => c.id !== id);
     updateState('charCharacters', updatedChars);
-    if (selectedCharId === id) {
-      setSelectedCharId(null);
-      setActiveTab('list');
-    }
+    setShowDeleteConfirm(null);
+  };
+
+  const handleTogglePin = (id: string) => {
+    const updatedChars = characters.map(c => 
+      c.id === id ? { ...c, isPinned: !c.isPinned } : c
+    );
+    updateState('charCharacters', updatedChars);
+  };
+
+  const handleAddClick = () => {
+    const newChar: CharCharacter = {
+      id: `char-${Date.now()}`,
+      name: '',
+      gender: '',
+      age: '',
+      birthday: '',
+      identity: '',
+      persona: '',
+      openingMessages: [''],
+      avatar: '',
+      backgroundImage: '',
+      isPinned: false,
+      wechatId: `wxid_${Math.random().toString(36).substr(2, 8)}`,
+      autoAddUser: false,
+      addRequestMsg: '你好，我是...',
+      isFriendApproved: false
+    };
+    setEditingChar(newChar);
+    setViewMode('edit');
+  };
+
+  const handleEditClick = (char: CharCharacter) => {
+    setEditingChar(char);
+    setViewMode('edit');
+  };
+
+  const sortedChars = [...characters].sort((a, b) => {
+    if (a.isPinned && !b.isPinned) return -1;
+    if (!a.isPinned && b.isPinned) return 1;
+    return 0;
+  });
+
+  const handleSelectChar = (char: CharCharacter) => {
+    updateState('selectedCharId', char.id);
+    updateState('chatAiName', char.name);
+    updateState('chatAiAvatar', char.avatar);
+    updateState('chatStatus', 'Online');
+    
+    // Construct system prompt from character data
+    const systemPrompt = `
+# 角色设定
+姓名：${char.name}
+性别：${char.gender}
+年龄：${char.age}
+身份：${char.identity}
+
+# 详细设定
+${char.persona}
+`.trim();
+    
+    updateState('systemPrompt', systemPrompt);
+    
+    // Set opening messages for the chat app to pick up
+    updateState('chatAiOpeningMessages', char.openingMessages);
+    
+    setIsChatOpen(true);
   };
 
   return (
@@ -112,412 +154,898 @@ export default function CharApp({ onClose, appState, updateState, setIsChatOpen,
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="absolute inset-0 z-30 bg-[#FFF9FB] flex flex-col overflow-hidden font-sans text-gray-800"
+      className={cn(
+        "absolute inset-0 z-30 bg-[#F5F5F5] flex flex-col overflow-hidden font-sans",
+        isFullscreen && "rounded-none"
+      )}
     >
-      <AnimatePresence mode="wait">
-        {activeTab === 'list' && (
-          <motion.div 
-            key="list"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            className="flex-1 overflow-hidden"
+      {/* Stars Background Decoration */}
+      <div className="absolute inset-0 pointer-events-none opacity-20">
+        {[...Array(20)].map((_, i) => (
+          <div 
+            key={i}
+            className="absolute text-gray-400"
+            style={{ 
+              top: `${Math.random() * 100}%`, 
+              left: `${Math.random() * 100}%`,
+              fontSize: `${Math.random() * 10 + 5}px`
+            }}
           >
-            <CharList 
-              characters={characters} 
-              onCharClick={handleCharClick} 
-              onClose={onClose} 
-              onOpenMasks={() => setActiveTab('masks')}
-              onOpenCreate={() => setIsCreating(true)}
-            />
-          </motion.div>
-        )}
-        {activeTab === 'detail' && selectedChar && (
-          <motion.div 
-            key="detail"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="flex-1 overflow-hidden"
-          >
-            <CharDetail 
-              character={selectedChar} 
-              onBack={() => setActiveTab('list')} 
-              onUpdate={handleUpdateChar}
-              onDelete={handleDeleteChar}
-              setIsChatOpen={setIsChatOpen}
-              onClose={onClose}
-              updateAppState={updateState}
-            />
-          </motion.div>
-        )}
-        {activeTab === 'masks' && (
-          <motion.div 
-            key="masks"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="flex-1 overflow-hidden"
-          >
-            <MaskManagement 
-              masks={masks} 
-              onBack={() => setActiveTab('list')} 
-              updateState={updateState}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Create Character Modal */}
-      <AnimatePresence>
-        {isCreating && (
-          <CreateCharModal 
-            onClose={() => setIsCreating(false)} 
-            onCreate={handleCreateChar} 
-          />
-        )}
-      </AnimatePresence>
-    </motion.div>
-  );
-}
-
-// --- 1. Char List (Home) ---
-function CharList({ characters, onCharClick, onClose, onOpenMasks, onOpenCreate }: { 
-  characters: CharCharacter[], 
-  onCharClick: (c: CharCharacter) => void, 
-  onClose: () => void,
-  onOpenMasks: () => void,
-  onOpenCreate: () => void
-}) {
-  return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="pt-12 pb-4 px-6 flex items-center justify-between bg-white/40 backdrop-blur-md sticky top-0 z-10">
-        <button onClick={onClose} className="p-2 -ml-2 text-gray-400 hover:text-gray-900 transition-colors">
-          <ChevronLeft className="w-6 h-6" />
-        </button>
-        <h1 className="text-lg font-bold text-gray-800 font-serif">Meet</h1>
-        <button onClick={onOpenMasks} className="p-2 -mr-2 text-gray-400 hover:text-gray-900 transition-colors">
-          <User className="w-6 h-6" />
-        </button>
-      </div>
-
-      {/* Grid */}
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="grid grid-cols-2 gap-4">
-          {characters.map(char => (
-            <motion.div 
-              key={char.id}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => onCharClick(char)}
-              className="bg-white rounded-3xl overflow-hidden shadow-sm border border-pink-50/50 group relative"
-            >
-              <div className="aspect-[3/4] relative">
-                <img src={char.avatar} className="w-full h-full object-cover" alt={char.name} referrerPolicy="no-referrer" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                <div className="absolute bottom-3 left-3 right-3 text-white">
-                  <div className="text-sm font-bold truncate">{char.name}</div>
-                  <div className="text-[10px] opacity-80 truncate">{char.title}</div>
-                </div>
-                <button className="absolute top-3 right-3 p-1.5 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-colors">
-                  <Heart className={cn("w-3.5 h-3.5", char.isFavorite && "fill-pink-500 text-pink-500")} />
-                </button>
-              </div>
-              <div className="p-3 flex flex-wrap gap-1">
-                {char.tags.slice(0, 2).map(tag => (
-                  <span key={tag} className="text-[8px] px-2 py-0.5 bg-pink-50 text-pink-400 rounded-full font-medium">
-                    #{tag}
-                  </span>
-                ))}
-              </div>
-            </motion.div>
-          ))}
-          
-          {/* Add Button */}
-          <motion.button 
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={onOpenCreate}
-            className="aspect-[3/4] bg-white rounded-3xl border-2 border-dashed border-pink-100 flex flex-col items-center justify-center gap-2 text-pink-200 hover:text-pink-400 hover:border-pink-300 transition-all"
-          >
-            <Plus className="w-8 h-8" />
-            <span className="text-xs font-bold">Create</span>
-          </motion.button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// --- 2. Char Detail ---
-function CharDetail({ character, onBack, onUpdate, onDelete, setIsChatOpen, onClose, updateAppState }: { 
-  character: CharCharacter, 
-  onBack: () => void, 
-  onUpdate: (c: CharCharacter) => void,
-  onDelete: (id: string) => void,
-  setIsChatOpen: (v: boolean) => void,
-  onClose: () => void,
-  updateAppState: (k: string, v: any) => void
-}) {
-  const handleStartChat = () => {
-    updateAppState('selectedCharId', character.id);
-    onClose();
-    setIsChatOpen(true);
-  };
-
-  return (
-    <div className="flex flex-col h-full bg-white">
-      {/* Hero */}
-      <div className="h-[50vh] relative">
-        <img src={character.avatar} className="w-full h-full object-cover" alt={character.name} referrerPolicy="no-referrer" />
-        <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent" />
-        
-        <button 
-          onClick={onBack}
-          className="absolute top-12 left-6 w-10 h-10 bg-white/20 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center text-white hover:bg-white/40 transition-all"
-        >
-          <ChevronLeft className="w-6 h-6" />
-        </button>
-
-        <div className="absolute bottom-0 left-0 right-0 p-8">
-          <div className="flex items-end justify-between">
-            <div>
-              <h2 className="text-3xl font-bold text-gray-900 font-serif mb-1">{character.name}</h2>
-              <p className="text-sm text-pink-400 font-medium">{character.title}</p>
-            </div>
-            <div className="flex gap-2">
-              <button 
-                onClick={() => onUpdate({ ...character, isFavorite: !character.isFavorite })}
-                className="w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center text-gray-400 hover:text-pink-500 transition-colors"
-              >
-                <Heart className={cn("w-6 h-6", character.isFavorite && "fill-pink-500 text-pink-500")} />
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Info */}
-      <div className="flex-1 overflow-y-auto px-8 pb-32">
-        <div className="flex gap-4 mb-8">
-          <div className="flex-1 bg-pink-50/50 rounded-2xl p-4 border border-pink-50">
-            <div className="text-[10px] text-pink-300 font-bold uppercase tracking-widest mb-1">好感度</div>
-            <div className="text-lg font-bold text-pink-500">{character.affection}%</div>
-          </div>
-          <div className="flex-1 bg-blue-50/50 rounded-2xl p-4 border border-blue-50">
-            <div className="text-[10px] text-blue-300 font-bold uppercase tracking-widest mb-1">心情</div>
-            <div className="text-lg font-bold text-blue-500">{character.mood}</div>
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <div>
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">角色简介</h3>
-            <p className="text-sm text-gray-600 leading-relaxed">{character.description}</p>
-          </div>
-
-          <div>
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">性格标签</h3>
-            <div className="flex flex-wrap gap-2">
-              {character.tags.map(tag => (
-                <span key={tag} className="px-4 py-1.5 bg-gray-50 text-gray-500 rounded-full text-xs font-medium border border-gray-100">
-                  {tag}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Action Bar */}
-      <div className="absolute bottom-0 inset-x-0 p-8 bg-gradient-to-t from-white via-white to-transparent">
-        <button 
-          onClick={handleStartChat}
-          className="w-full h-14 bg-gray-900 text-white rounded-2xl font-bold text-sm shadow-xl hover:bg-gray-800 transition-all flex items-center justify-center gap-2"
-        >
-          <MessageCircle className="w-5 h-5" />
-          开始聊天
-        </button>
-        <div className="text-center text-[10px] text-gray-400 font-medium mt-4">
-          角色已就绪，点击上方按钮或前往“通讯”界面开启对话
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// --- 4. Mask Management ---
-function MaskManagement({ masks, onBack, updateState }: { 
-  masks: PersonaMask[], 
-  onBack: () => void,
-  updateState: (k: string, v: any) => void
-}) {
-  const [isCreating, setIsCreating] = useState(false);
-  const [editingMask, setEditingMask] = useState<PersonaMask | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [tempAvatar, setTempAvatar] = useState<string | null>(null);
-
-  const handleDelete = (id: string) => {
-    const updated = masks.filter(m => m.id !== id);
-    updateState('personaMasks', updated);
-  };
-
-  const handleSave = (mask: PersonaMask) => {
-    if (editingMask) {
-      const updated = masks.map(m => m.id === mask.id ? mask : m);
-      updateState('personaMasks', updated);
-    } else {
-      const updated = [...masks, { ...mask, id: `mask-${Date.now()}` }];
-      updateState('personaMasks', updated);
-    }
-    setIsCreating(false);
-    setEditingMask(null);
-    setTempAvatar(null);
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      try {
-        const compressed = await compressImage(file, 400, 400, 0.7);
-        setTempAvatar(compressed);
-      } catch (err) {
-        console.error('Image compression failed', err);
-      }
-    }
-  };
-
-  return (
-    <div className="flex flex-col h-full bg-[#FFF9FB]">
-      {/* Header */}
-      <div className="pt-12 pb-4 px-6 flex items-center justify-between bg-white/40 backdrop-blur-md sticky top-0 z-10">
-        <button onClick={onBack} className="p-2 -ml-2 text-gray-400 hover:text-gray-900 transition-colors">
-          <ChevronLeft className="w-6 h-6" />
-        </button>
-        <h1 className="text-lg font-bold text-gray-800 font-serif">人设面具</h1>
-        <button 
-          onClick={() => setIsCreating(true)}
-          className="p-2 -mr-2 text-pink-400 hover:text-pink-600 transition-colors"
-        >
-          <Plus className="w-6 h-6" />
-        </button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
-        {masks.map(mask => (
-          <div key={mask.id} className="bg-white rounded-3xl p-5 border border-pink-50 shadow-sm flex items-center gap-4 group">
-            <img src={mask.avatar} className="w-16 h-16 rounded-2xl object-cover border border-gray-100" alt={mask.name} referrerPolicy="no-referrer" />
-            <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-gray-800 truncate">{mask.name}</h3>
-              <p className="text-[10px] text-gray-400 line-clamp-2 mt-1">{mask.description}</p>
-            </div>
-            <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button 
-                onClick={() => { setEditingMask(mask); setTempAvatar(mask.avatar); setIsCreating(true); }}
-                className="p-2 text-gray-400 hover:text-gray-900 transition-colors"
-              >
-                <Edit2 className="w-4 h-4" />
-              </button>
-              <button 
-                onClick={() => handleDelete(mask.id)}
-                className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
+            ✦
           </div>
         ))}
-
-        {masks.length === 0 && (
-          <div className="text-center py-20 text-gray-300">
-            <UserPlus className="w-12 h-12 mx-auto mb-4 opacity-20" />
-            <p className="text-xs font-medium">暂无人设面具，点击右上角创建</p>
-          </div>
-        )}
       </div>
 
-      {/* Create/Edit Modal */}
+      {/* Custom CSS Injection */}
+      <style dangerouslySetInnerHTML={{ __html: appState.charCustomCSS }} />
+
+      <AnimatePresence mode="wait">
+        {viewMode === 'list' ? (
+          <ListView 
+            key="list"
+            characters={sortedChars}
+            onClose={onClose}
+            onAdd={handleAddClick}
+            onEdit={handleEditClick}
+            onDelete={setShowDeleteConfirm}
+            onTogglePin={handleTogglePin}
+            onReorder={(newOrder: CharCharacter[]) => updateState('charCharacters', newOrder)}
+            setViewMode={setViewMode}
+            onSelect={(char: CharCharacter) => {
+              setEditingChar(char);
+              setViewMode('detail');
+            }}
+          />
+        ) : viewMode === 'detail' ? (
+          <motion.div key="detail" className="h-full">
+            <DetailView 
+              character={editingChar!}
+              onBack={() => setViewMode('list')}
+              onEdit={() => setViewMode('edit')}
+              onSelect={handleSelectChar}
+            />
+          </motion.div>
+        ) : viewMode === 'settings' ? (
+          <motion.div key="settings" className="h-full">
+            <SettingsView 
+              appState={appState}
+              updateState={updateState}
+              onBack={() => setViewMode('list')}
+            />
+          </motion.div>
+        ) : (
+          <div key="edit" className="h-full">
+            <EditView 
+              character={editingChar!}
+              onSave={handleSave}
+              onCancel={() => setViewMode('list')}
+              setViewMode={setViewMode}
+              onAdd={handleAddClick}
+            />
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Overlay */}
       <AnimatePresence>
-        {isCreating && (
+        {showDeleteConfirm && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm flex items-center justify-center p-6"
+            className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm flex items-center justify-center p-6"
           >
             <motion.div 
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="w-full max-w-sm bg-white rounded-[2.5rem] overflow-hidden shadow-2xl"
+              className="bg-white rounded-[2rem] p-8 w-full max-w-xs text-center shadow-2xl"
             >
-              <div className="p-8">
-                <h2 className="text-xl font-bold text-gray-800 mb-6 font-serif">
-                  {editingMask ? '编辑人设' : '创建人设'}
-                </h2>
-                <div className="space-y-6">
-                  <div className="flex justify-center">
-                    <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                      <img 
-                        src={tempAvatar || editingMask?.avatar || "https://picsum.photos/seed/mask/200/200"} 
-                        className="w-24 h-24 rounded-3xl object-cover border-4 border-pink-50 shadow-lg" 
-                        alt="avatar"
-                        referrerPolicy="no-referrer"
-                      />
-                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white rounded-3xl">
-                        <Camera className="w-6 h-6" />
-                      </div>
-                      <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
-                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">人设名称</label>
-                      <input 
-                        type="text" 
-                        defaultValue={editingMask?.name}
-                        placeholder="给你的面具起个名字"
-                        className="w-full bg-transparent outline-none text-sm font-bold text-gray-800"
-                        id="mask-name"
-                      />
-                    </div>
-                    <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
-                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">身份描述</label>
-                      <textarea 
-                        defaultValue={editingMask?.description}
-                        placeholder="描述这个身份的性格、背景..."
-                        className="w-full bg-transparent outline-none text-sm text-gray-600 h-24 resize-none"
-                        id="mask-desc"
-                      />
-                    </div>
-                  </div>
-                </div>
+              <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
+                <Trash2 className="w-8 h-8" />
               </div>
-              <div className="flex border-t border-gray-50">
+              <h3 className="text-lg font-bold text-gray-800 mb-2">确认删除？</h3>
+              <p className="text-sm text-gray-400 mb-8">删除后角色数据将无法找回哦</p>
+              <div className="flex gap-3">
                 <button 
-                  onClick={() => { setIsCreating(false); setEditingMask(null); setTempAvatar(null); }}
-                  className="flex-1 py-6 text-sm font-bold text-gray-400 hover:bg-gray-50 transition-colors"
+                  onClick={() => setShowDeleteConfirm(null)}
+                  className="flex-1 h-12 bg-gray-100 text-gray-400 rounded-xl font-bold text-sm"
                 >
                   取消
                 </button>
                 <button 
-                  onClick={() => {
-                    const name = (document.getElementById('mask-name') as HTMLInputElement).value;
-                    const desc = (document.getElementById('mask-desc') as HTMLTextAreaElement).value;
-                    if (name) {
-                      handleSave({
-                        id: editingMask?.id || '',
-                        name,
-                        description: desc,
-                        avatar: tempAvatar || editingMask?.avatar || `https://picsum.photos/seed/${Date.now()}/200/200`,
-                        boundCharacterIds: editingMask?.boundCharacterIds || []
-                      });
+                  onClick={() => handleDelete(showDeleteConfirm)}
+                  className="flex-1 h-12 bg-red-500 text-white rounded-xl font-bold text-sm shadow-lg shadow-red-200"
+                >
+                  删除
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
+function ListView({ characters, onClose, onAdd, onEdit, onDelete, onTogglePin, onReorder, setViewMode, onSelect }: any) {
+  return (
+    <div className="flex flex-col h-full relative z-10 overflow-hidden">
+      {/* Header */}
+      <div className="pt-12 pb-4 px-6 flex items-center justify-between bg-[#F5F5F5]/80 backdrop-blur-md sticky top-0 z-30">
+        <button onClick={onClose} className="p-2 -ml-2 text-gray-400 hover:text-gray-900 transition-colors">
+          <ChevronLeft className="w-8 h-8" />
+        </button>
+        <h1 className="text-xl font-medium text-gray-800 tracking-tight">Characters</h1>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setViewMode('settings')} className="p-2 text-gray-400 hover:text-gray-900 transition-colors">
+            <SettingsIcon className="w-6 h-6" />
+          </button>
+          <button onClick={onAdd} className="p-2 -mr-2 text-gray-400 hover:text-gray-900 transition-colors">
+            <Plus className="w-8 h-8" />
+          </button>
+        </div>
+      </div>
+
+      {/* Grid Content */}
+      <div className="flex-1 overflow-y-auto px-6 pb-12 scrollbar-hide">
+        {characters.length === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center text-center space-y-8">
+            <div className="w-40 h-40 flex flex-col items-center justify-center relative">
+              <div className="w-24 h-32 border-2 border-white/60 rounded-xl relative">
+                <div className="absolute -top-4 -left-4 w-12 h-12 rounded-full border-2 border-white/60 flex items-center justify-center bg-white/10">
+                  <Plus className="w-6 h-6 text-white/60" />
+                </div>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <h3 className="text-2xl font-light text-white/80 tracking-widest">與他會面.</h3>
+              <button 
+                onClick={onAdd}
+                className="px-8 py-3 bg-white/20 backdrop-blur-md border border-white/30 rounded-full text-white text-sm font-medium hover:bg-white/30 transition-all"
+              >
+                新建角色卡
+              </button>
+            </div>
+          </div>
+        ) : (
+          <Reorder.Group 
+            axis="y" 
+            values={characters} 
+            onReorder={onReorder}
+            className="grid grid-cols-2 gap-x-4 gap-y-12 pt-8"
+          >
+            {characters.map((char: CharCharacter) => (
+              <Reorder.Item 
+                key={char.id} 
+                value={char}
+                className="relative"
+              >
+                {/* Protruding Avatar */}
+                <div className="absolute -top-6 left-4 w-14 h-14 rounded-full border-4 border-white shadow-xl overflow-hidden bg-gray-50 z-20 pointer-events-none">
+                  {char.avatar ? (
+                    <img src={char.avatar} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-200">
+                      <User className="w-8 h-8" />
+                    </div>
+                  )}
+                </div>
+
+                {/* About me bubble */}
+                <div className="absolute -top-4 left-20 z-20">
+                  <div className="bg-white px-3 py-1 rounded-lg text-[8px] font-bold text-gray-400 shadow-sm border border-gray-50">
+                    About me
+                  </div>
+                </div>
+
+                <div 
+                  onClick={() => onSelect(char)}
+                  className="char-card bg-white/60 backdrop-blur-md border border-white/40 shadow-xl relative group cursor-pointer aspect-[3/4] rounded-none overflow-hidden"
+                >
+                  {/* Background Image (Edges only) */}
+                  {char.backgroundImage && (
+                    <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-40">
+                      <div className="h-1/4 w-full overflow-hidden">
+                        <img src={char.backgroundImage} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                      </div>
+                      <div className="flex-1" />
+                      <div className="h-1/4 w-full overflow-hidden">
+                        <img src={char.backgroundImage} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
+
+                  {/* Card Actions (Bottom Right) */}
+                  <div className="absolute bottom-3 right-3 flex gap-1.5 z-30">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); onTogglePin(char.id); }}
+                      className={cn(
+                        "w-7 h-7 flex items-center justify-center rounded-full backdrop-blur-md border border-white/20 transition-all",
+                        char.isPinned ? "bg-yellow-400 text-white" : "bg-white/40 text-white"
+                      )}
+                    >
+                      <Star className="w-3 h-3" fill={char.isPinned ? "currentColor" : "none"} />
+                    </button>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); onDelete(char.id); }}
+                      className="w-7 h-7 flex items-center justify-center rounded-full bg-white/40 backdrop-blur-md border border-white/20 text-white hover:bg-red-500 transition-all"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+
+                  <div className="absolute bottom-4 left-4 right-12 text-white pointer-events-none z-10">
+                    <div className="text-xs font-bold truncate mb-0.5">{char.name || "未命名"}</div>
+                    <div className="text-[8px] opacity-70 truncate">WXID: {char.wechatId}</div>
+                    <div className="text-[8px] opacity-70 truncate mt-1">{char.identity || "暂无身份信息"}</div>
+                  </div>
+                </div>
+
+                {/* QR Code below card */}
+                <div className="mt-2 flex flex-col items-center">
+                  <div className="p-1 bg-white rounded-lg shadow-sm border border-gray-100">
+                    <QRCodeSVG value={`wechat://add/${char.wechatId}`} size={40} />
+                  </div>
+                  <span className="text-[6px] text-gray-400 mt-1 font-bold tracking-tighter">SCAN TO ADD</span>
+                </div>
+              </Reorder.Item>
+            ))}
+          </Reorder.Group>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DetailView({ character, onBack, onEdit, onSelect }: { character: CharCharacter, onBack: () => void, onEdit: () => void, onSelect: (c: CharCharacter) => void }) {
+  return (
+    <div className="detail-view flex flex-col h-full bg-[#F5F5F5] relative z-10 overflow-hidden">
+      {/* Header */}
+      <div className="pt-12 pb-4 px-6 flex items-center justify-between sticky top-0 z-30 bg-transparent">
+        <button onClick={onBack} className="p-2 -ml-2 text-gray-400 hover:text-gray-900 transition-colors">
+          <ChevronLeft className="w-8 h-8" />
+        </button>
+        <div className="text-sm font-bold text-gray-400 tracking-widest uppercase">Character Detail</div>
+        <div className="w-8" />
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-6 pb-32 scrollbar-hide">
+        <div className="relative pt-20">
+          <div className="bg-white/70 backdrop-blur-xl border border-white/40 shadow-2xl rounded-none relative overflow-hidden">
+            {/* Background Image */}
+            <div className="h-64 w-full relative">
+              {character.backgroundImage ? (
+                <img src={character.backgroundImage} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+              ) : (
+                <div className="w-full h-full bg-gray-100" />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-white/80 via-transparent to-transparent" />
+            </div>
+
+            <div className="p-10 pt-16 relative">
+              {/* Avatar */}
+              <div className="absolute -top-16 left-10 w-32 h-32 rounded-full border-4 border-white shadow-2xl overflow-hidden bg-gray-50 z-30">
+                {character.avatar ? (
+                  <img src={character.avatar} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-200">
+                    <User className="w-16 h-16" />
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">{character.name}</h2>
+                  <p className="text-sm text-gray-400">WXID: {character.wechatId}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-gray-50 p-3 rounded-xl">
+                    <span className="text-[10px] text-gray-400 block mb-1">Gender</span>
+                    <span className="text-sm font-bold text-gray-700">{character.gender || "Unknown"}</span>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-xl">
+                    <span className="text-[10px] text-gray-400 block mb-1">Age</span>
+                    <span className="text-sm font-bold text-gray-700">{character.age || "Unknown"}</span>
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded-2xl">
+                  <span className="text-[10px] text-gray-400 block mb-2 uppercase tracking-widest">Identity</span>
+                  <p className="text-sm text-gray-700 leading-relaxed">{character.identity || "No identity info"}</p>
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded-2xl">
+                  <span className="text-[10px] text-gray-400 block mb-2 uppercase tracking-widest">Persona</span>
+                  <p className="text-sm text-gray-700 leading-relaxed">{character.persona || "No persona info"}</p>
+                </div>
+              </div>
+
+              <div className="mt-12 flex flex-col items-center gap-4">
+                <div className="p-2 bg-white rounded-2xl shadow-lg border border-gray-100">
+                  <QRCodeSVG value={`wechat://add/${character.wechatId}`} size={120} />
+                </div>
+                <p className="text-[10px] text-gray-400 font-bold tracking-widest">SCAN TO ADD ON WECHAT</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer Actions */}
+      <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[#F5F5F5] via-[#F5F5F5] to-transparent z-40 flex gap-4">
+        <button 
+          onClick={onEdit}
+          className="flex-1 h-16 bg-white text-gray-900 border border-gray-200 rounded-xl font-bold shadow-sm hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2"
+        >
+          <Edit2 className="w-5 h-5" /> 修改信息
+        </button>
+        <button 
+          onClick={() => onSelect(character)}
+          className="flex-1 h-16 bg-gray-900 text-white rounded-xl font-bold shadow-xl hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2"
+        >
+          开始聊天
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SettingsView({ appState, updateState, onBack }: { appState: any, updateState: (k: string, v: any) => void, onBack: () => void }) {
+  const [cssInput, setCssInput] = useState(appState.charCustomCSS);
+  const [baseUrl, setBaseUrl] = useState(appState.apiBaseUrl || 'https://api.openai.com/v1');
+  const [apiKey, setApiKey] = useState(appState.apiKey || '');
+  const [showKey, setShowKey] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
+  const [statusMsg, setStatusMsg] = useState(appState.availableModels?.length > 0 ? `已加载 ${appState.availableModels.length} 个模型` : '未连接');
+  const [manualModel, setManualModel] = useState('');
+
+  useEffect(() => {
+    if (appState.apiBaseUrl && appState.apiKey && (!appState.availableModels || appState.availableModels.length === 0)) {
+      fetchModels(appState.apiBaseUrl, appState.apiKey);
+    }
+  }, []);
+
+  const handleExport = (type: 'text' | 'file' | 'sakura' | 'image') => {
+    const data = JSON.stringify(appState.charCharacters, null, 2);
+    if (type === 'text') {
+      navigator.clipboard.writeText(data);
+      alert('角色数据已复制到剪贴板');
+    } else if (type === 'file' || type === 'sakura') {
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = type === 'sakura' ? 'sakura_cards.json' : 'characters_export.json';
+      a.click();
+    } else if (type === 'image') {
+      alert('图片导出功能正在生成中... (模拟生成)');
+    }
+  };
+
+  const fetchModels = async (url: string, key: string) => {
+    setIsTesting(true);
+    setStatusMsg('正在拉取模型列表...');
+    
+    const endpoints = [
+      url.endsWith('/') ? `${url}models` : `${url}/models`,
+      url.includes('/v1') ? url.replace('/v1', '/v1beta') + '/models' : url + '/v1beta/models',
+      url.split('/v1')[0] + '/models'
+    ];
+
+    let success = false;
+    let models: string[] = [];
+
+    for (const endpoint of endpoints) {
+      try {
+        const response = await fetch(endpoint, {
+          headers: {
+            'Authorization': `Bearer ${key}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.data && Array.isArray(data.data)) {
+            models = data.data.map((m: any) => m.id);
+            success = true;
+            break;
+          }
+        }
+      } catch (err) {
+        console.error(`Failed to fetch from ${endpoint}`, err);
+      }
+    }
+
+    if (success) {
+      updateState('availableModels', models);
+      if (models.length > 0 && !models.includes(appState.selectedModel)) {
+        updateState('selectedModel', models[0]);
+      }
+      setStatusMsg(`成功！已加载 ${models.length} 个模型`);
+    } else {
+      setStatusMsg('拉取失败，请检查地址和 Key');
+      if (!appState.availableModels || appState.availableModels.length === 0) {
+        updateState('availableModels', ['manual']);
+      }
+    }
+    setIsTesting(false);
+  };
+
+  const handleSaveConfig = () => {
+    if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+      alert('API 地址必须以 http:// 或 https:// 开头');
+      return;
+    }
+    updateState('apiBaseUrl', baseUrl);
+    updateState('apiKey', apiKey);
+    alert('配置已保存');
+    fetchModels(baseUrl, apiKey);
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-white relative z-10 overflow-hidden">
+      <div className="pt-12 pb-4 px-6 flex items-center justify-between border-b border-gray-50">
+        <button onClick={onBack} className="p-2 -ml-2 text-gray-400 hover:text-gray-900 transition-colors">
+          <ChevronLeft className="w-8 h-8" />
+        </button>
+        <h2 className="text-lg font-bold text-gray-800">设置</h2>
+        <div className="w-8" />
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-hide">
+        {/* API Settings Section */}
+        <section className="space-y-4">
+          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">API 设置</h3>
+          <div className="space-y-4 bg-gray-50 p-4 rounded-2xl border border-gray-100">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-gray-400 ml-1">API 地址</label>
+              <input 
+                type="text"
+                value={baseUrl}
+                onChange={(e) => setBaseUrl(e.target.value)}
+                placeholder="https://api.openai.com/v1"
+                className="w-full bg-white border border-gray-100 rounded-xl px-4 py-3 text-xs outline-none focus:border-blue-400 transition-colors"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-gray-400 ml-1">API Key</label>
+              <div className="relative">
+                <input 
+                  type={showKey ? "text" : "password"}
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="sk-..."
+                  className="w-full bg-white border border-gray-100 rounded-xl px-4 py-3 text-xs outline-none focus:border-blue-400 transition-colors pr-10"
+                />
+                <button 
+                  onClick={() => setShowKey(!showKey)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600"
+                >
+                  {showKey ? <X className="w-4 h-4" /> : <Key className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-gray-400 ml-1">选择模型</label>
+              <select 
+                value={appState.selectedModel}
+                onChange={(e) => updateState('selectedModel', e.target.value)}
+                className="w-full bg-white border border-gray-100 rounded-xl px-4 py-3 text-xs outline-none focus:border-blue-400 transition-colors appearance-none"
+              >
+                {appState.availableModels?.length > 0 ? (
+                  appState.availableModels.map((m: string) => (
+                    <option key={m} value={m}>{m === 'manual' ? '手动输入' : m}</option>
+                  ))
+                ) : (
+                  <option value="">点击测试连接后加载模型</option>
+                )}
+              </select>
+            </div>
+
+            {appState.selectedModel === 'manual' && (
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-gray-400 ml-1">手动输入模型名</label>
+                <input 
+                  type="text"
+                  value={manualModel}
+                  onChange={(e) => setManualModel(e.target.value)}
+                  onBlur={() => {
+                    if (manualModel) {
+                      updateState('availableModels', [...(appState.availableModels || []).filter((m: string) => m !== 'manual'), manualModel, 'manual']);
+                      updateState('selectedModel', manualModel);
                     }
                   }}
-                  className="flex-1 py-6 text-sm font-bold text-pink-500 hover:bg-pink-50 transition-colors border-l border-gray-50"
+                  placeholder="例如: gpt-4-turbo"
+                  className="w-full bg-white border border-gray-100 rounded-xl px-4 py-3 text-xs outline-none focus:border-blue-400 transition-colors"
+                />
+              </div>
+            )}
+
+            <div className="flex items-center justify-between pt-2">
+              <span className={cn(
+                "text-[10px] font-bold",
+                statusMsg.includes('成功') ? "text-green-500" : "text-gray-400"
+              )}>
+                {statusMsg}
+              </span>
+              <button 
+                onClick={() => fetchModels(baseUrl, apiKey)}
+                className="text-[10px] font-bold text-blue-500 hover:underline flex items-center gap-1"
+                disabled={isTesting}
+              >
+                <RefreshCw className={cn("w-3 h-3", isTesting && "animate-spin")} />
+                重新拉取模型
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <button 
+                onClick={() => fetchModels(baseUrl, apiKey)}
+                className="py-3 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                测试连接
+              </button>
+              <button 
+                onClick={handleSaveConfig}
+                className="py-3 bg-gray-900 text-white rounded-xl text-xs font-bold shadow-lg shadow-gray-200 hover:scale-[1.02] active:scale-[0.98] transition-all"
+              >
+                保存配置
+              </button>
+            </div>
+
+            <button 
+              onClick={() => {
+                if (confirm('确定要清除所有 API 配置吗？')) {
+                  setBaseUrl('');
+                  setApiKey('');
+                  updateState('apiBaseUrl', '');
+                  updateState('apiKey', '');
+                  updateState('availableModels', []);
+                  updateState('selectedModel', '');
+                  setStatusMsg('配置已清除');
+                }
+              }}
+              className="w-full py-2 text-[10px] font-bold text-red-400 hover:text-red-500 transition-colors"
+            >
+              清除配置
+            </button>
+          </div>
+          <p className="text-[10px] text-gray-400 leading-relaxed italic px-1">
+            * 帮助：API 地址通常为网关地址，Key 可在服务商后台获取。支持 OpenAI 格式接口。
+          </p>
+        </section>
+
+        <section className="space-y-4">
+          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">导出角色卡</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <button onClick={() => handleExport('text')} className="p-4 bg-gray-50 rounded-2xl flex flex-col items-center gap-2 hover:bg-gray-100 transition-colors">
+              <Copy className="w-6 h-6 text-blue-500" />
+              <span className="text-[10px] font-bold text-gray-600">文字导出</span>
+            </button>
+            <button onClick={() => handleExport('file')} className="p-4 bg-gray-50 rounded-2xl flex flex-col items-center gap-2 hover:bg-gray-100 transition-colors">
+              <FileJson className="w-6 h-6 text-green-500" />
+              <span className="text-[10px] font-bold text-gray-600">文件导出</span>
+            </button>
+            <button onClick={() => handleExport('sakura')} className="p-4 bg-gray-50 rounded-2xl flex flex-col items-center gap-2 hover:bg-gray-100 transition-colors">
+              <Star className="w-6 h-6 text-pink-400" />
+              <span className="text-[10px] font-bold text-gray-600">樱咲卡导出</span>
+            </button>
+            <button onClick={() => handleExport('image')} className="p-4 bg-gray-50 rounded-2xl flex flex-col items-center gap-2 hover:bg-gray-100 transition-colors">
+              <ImageLucide className="w-6 h-6 text-orange-400" />
+              <span className="text-[10px] font-bold text-gray-600">图片导出</span>
+            </button>
+          </div>
+        </section>
+
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">美化框 (CSS)</h3>
+            <button 
+              onClick={() => updateState('charCustomCSS', cssInput)}
+              className="text-[10px] font-bold text-blue-500 hover:underline"
+            >
+              应用修改
+            </button>
+          </div>
+          <div className="bg-gray-900 rounded-2xl p-4 font-mono text-[10px] text-green-400 shadow-inner">
+            <textarea 
+              value={cssInput}
+              onChange={(e) => setCssInput(e.target.value)}
+              className="w-full bg-transparent outline-none resize-none min-h-[300px] leading-relaxed"
+              spellCheck={false}
+            />
+          </div>
+          <p className="text-[10px] text-gray-400 leading-relaxed italic">
+            * 提示：CSS 修改将实时影响首页卡片、大图页及导出图片。
+          </p>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function EditView({ character, onSave, onCancel, setViewMode, onAdd }: { 
+  character: CharCharacter, 
+  onSave: (c: CharCharacter) => void,
+  onCancel: () => void,
+  setViewMode: (m: ViewMode) => void,
+  onAdd: () => void
+}) {
+  const [formData, setFormData] = useState(character);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const bgInputRef = useRef<HTMLInputElement>(null);
+
+  const handleBack = () => {
+    const isChanged = JSON.stringify(formData) !== JSON.stringify(character);
+    if (isChanged) {
+      setShowDiscardConfirm(true);
+    } else {
+      onCancel();
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'avatar' | 'backgroundImage') => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        const compressed = await compressImage(file, 800, 1200, 0.6);
+        setFormData(prev => ({ ...prev, [field]: compressed }));
+      } catch (err) {
+        console.error('Image upload failed', err);
+      }
+    }
+  };
+
+  const updateOpeningMsg = (index: number, val: string) => {
+    const newMsgs = [...formData.openingMessages];
+    newMsgs[index] = val;
+    setFormData(prev => ({ ...prev, openingMessages: newMsgs }));
+  };
+
+  const addOpeningMsg = () => {
+    if (formData.openingMessages.length < 10) {
+      setFormData(prev => ({ ...prev, openingMessages: [...prev.openingMessages, ''] }));
+    }
+  };
+
+  const removeOpeningMsg = (index: number) => {
+    if (formData.openingMessages.length > 1) {
+      const newMsgs = formData.openingMessages.filter((_, i) => i !== index);
+      setFormData(prev => ({ ...prev, openingMessages: newMsgs }));
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-[#F5F5F5] relative z-10 overflow-hidden">
+      {/* Header */}
+      <div className="pt-12 pb-4 px-6 flex items-center justify-between sticky top-0 z-30 bg-[#F5F5F5]/80 backdrop-blur-md">
+        <button onClick={handleBack} className="p-2 -ml-2 text-gray-400 hover:text-gray-900 transition-colors">
+          <ChevronLeft className="w-8 h-8" />
+        </button>
+        <div className="text-sm font-bold text-gray-400 tracking-widest uppercase">Edit Character</div>
+        <button onClick={onAdd} className="p-2 -mr-2 text-gray-400 hover:text-gray-900 transition-colors">
+          <Plus className="w-8 h-8" />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-6 pb-32 scrollbar-hide">
+        <div className="space-y-8">
+          {/* Irregular Card Header */}
+          <div className="relative pt-16">
+            <div className="bg-white/70 backdrop-blur-xl border border-white/40 shadow-2xl rounded-none relative">
+              {/* Background Area (Only edges) */}
+              <div 
+                className="h-48 relative cursor-pointer group overflow-hidden"
+                onClick={() => bgInputRef.current?.click()}
+              >
+                {formData.backgroundImage ? (
+                  <div className="absolute inset-0 flex flex-col justify-between">
+                    <div className="h-1/4 w-full overflow-hidden">
+                      <img src={formData.backgroundImage} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                    </div>
+                    <div className="flex-1 bg-transparent" />
+                    <div className="h-1/4 w-full overflow-hidden">
+                      <img src={formData.backgroundImage} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                    </div>
+                    <div className="absolute inset-0 bg-white/5" />
+                  </div>
+                ) : (
+                  <div className="absolute inset-0 bg-gray-50/30 flex items-center justify-center text-gray-300">
+                    <ImageIcon className="w-10 h-10" />
+                  </div>
+                )}
+                <input type="file" ref={bgInputRef} className="hidden" onChange={(e) => handleImageUpload(e, 'backgroundImage')} accept="image/*" />
+              </div>
+
+              <div className="p-10 pt-14 relative">
+                {/* Avatar Circle (Protruding) */}
+                <div 
+                  className="absolute -top-14 left-10 w-28 h-28 rounded-full border-4 border-white shadow-2xl overflow-hidden bg-gray-50 group cursor-pointer z-30"
+                  onClick={() => avatarInputRef.current?.click()}
                 >
-                  保存
+                  {formData.avatar ? (
+                    <img src={formData.avatar} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-200">
+                      <User className="w-14 h-14" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                    <Camera className="w-8 h-8" />
+                  </div>
+                  <input type="file" ref={avatarInputRef} className="hidden" onChange={(e) => handleImageUpload(e, 'avatar')} accept="image/*" />
+                </div>
+
+                {/* About me bubble (Rounded Rectangle) */}
+                <div className="ml-32 -mt-6 mb-10">
+                  <div className="inline-block bg-white px-5 py-2 rounded-xl text-xs font-bold text-gray-400 shadow-md border border-gray-100">
+                    About me
+                  </div>
+                </div>
+
+                {/* Form Sections */}
+                <div className="space-y-12">
+                  {/* Basic Info */}
+                  <section className="space-y-8">
+                    <div className="flex justify-center">
+                      <div className="px-8 py-2.5 bg-gray-100/80 rounded-xl text-xs font-bold text-gray-400 text-center shadow-sm">基础信息</div>
+                    </div>
+                    <div className="space-y-4">
+                      <InputRow label="姓名" value={formData.name} onChange={v => setFormData(p => ({ ...p, name: v }))} />
+                      <InputRow label="性别" value={formData.gender} onChange={v => setFormData(p => ({ ...p, gender: v }))} />
+                      <InputRow 
+                        label="年龄" 
+                        value={formData.age} 
+                        onChange={v => {
+                          if (/^\d*$/.test(v) && Number(v) <= 120) {
+                            setFormData(p => ({ ...p, age: v }));
+                          }
+                        }} 
+                        placeholder="1-120"
+                      />
+                      <InputRow 
+                        label="生日" 
+                        value={formData.birthday} 
+                        onChange={v => setFormData(p => ({ ...p, birthday: v }))} 
+                        type="date"
+                      />
+                      <InputRow label="身份" value={formData.identity} onChange={v => setFormData(p => ({ ...p, identity: v }))} />
+                      <InputRow label="微信号" value={formData.wechatId} onChange={v => setFormData(p => ({ ...p, wechatId: v }))} />
+                    </div>
+                  </section>
+
+                  {/* WeChat Interaction Settings */}
+                  <section className="space-y-8">
+                    <div className="flex justify-center">
+                      <div className="px-8 py-2.5 bg-gray-100/80 rounded-xl text-xs font-bold text-gray-400 text-center shadow-sm">WeChat 互动设置</div>
+                    </div>
+                    <div className="space-y-6">
+                      <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                        <div className="space-y-1">
+                          <div className="text-sm font-bold text-gray-700">由TA加你</div>
+                          <div className="text-[10px] text-gray-400">开启后，角色会在微信主动向你发送好友申请</div>
+                        </div>
+                        <button 
+                          onClick={() => setFormData(p => ({ ...p, autoAddUser: !p.autoAddUser }))}
+                          className={cn(
+                            "w-12 h-6 rounded-full transition-all relative",
+                            formData.autoAddUser ? "bg-green-500" : "bg-gray-200"
+                          )}
+                        >
+                          <div className={cn(
+                            "absolute top-1 w-4 h-4 bg-white rounded-full transition-all",
+                            formData.autoAddUser ? "right-1" : "left-1"
+                          )} />
+                        </button>
+                      </div>
+                      
+                      {formData.autoAddUser && (
+                        <DetailBox 
+                          title="好友申请信息" 
+                          value={formData.addRequestMsg} 
+                          onChange={v => setFormData(p => ({ ...p, addRequestMsg: v }))} 
+                          singleLine 
+                        />
+                      )}
+                    </div>
+                  </section>
+
+                  {/* Detail Info */}
+                  <section className="space-y-6">
+                    <DetailBox title="角色人设" value={formData.persona} onChange={v => setFormData(p => ({ ...p, persona: v }))} />
+                  </section>
+
+                  {/* Interaction */}
+                  <section className="space-y-8">
+                    <div className="space-y-4">
+                      <div className="flex justify-start">
+                        <div className="px-4 py-1.5 bg-gray-100 rounded-xl text-xs font-bold text-gray-400">角色开场消息</div>
+                      </div>
+                      <div className="space-y-3">
+                        {formData.openingMessages.map((msg, i) => (
+                          <div key={i} className="flex gap-2">
+                            <div className="flex-1 bg-gray-50 rounded-xl p-3 border border-gray-100">
+                              <input 
+                                value={msg}
+                                onChange={e => updateOpeningMsg(i, e.target.value)}
+                                className="w-full bg-transparent outline-none text-sm text-gray-600"
+                                placeholder={`消息 ${i + 1}`}
+                              />
+                            </div>
+                            {formData.openingMessages.length > 1 && (
+                              <button onClick={() => removeOpeningMsg(i)} className="p-3 text-gray-300 hover:text-red-500 transition-colors"><X className="w-4 h-4" /></button>
+                            )}
+                          </div>
+                        ))}
+                        {formData.openingMessages.length < 10 && (
+                          <button 
+                            onClick={addOpeningMsg}
+                            className="w-full py-3 border-2 border-dashed border-gray-200 rounded-xl text-gray-300 flex items-center justify-center hover:border-gray-300 hover:text-gray-400 transition-all"
+                          >
+                            <Plus className="w-5 h-5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Fixed Footer */}
+      <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[#F5F5F5] via-[#F5F5F5] to-transparent z-40">
+        <button 
+          onClick={() => {
+            if (!formData.name.trim()) return;
+            onSave(formData);
+          }}
+          className="w-full h-16 bg-[#E5E5E5] text-black rounded-xl font-bold shadow-sm hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50"
+          disabled={!formData.name.trim()}
+        >
+          确定
+        </button>
+      </div>
+
+      {/* Discard Confirmation Overlay */}
+      <AnimatePresence>
+        {showDiscardConfirm && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm flex items-center justify-center p-6"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-[2rem] p-8 w-full max-w-xs text-center shadow-2xl"
+            >
+              <h3 className="text-lg font-bold text-gray-800 mb-2">是否放弃编辑？</h3>
+              <p className="text-sm text-gray-400 mb-8">当前修改将不会被保存</p>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setShowDiscardConfirm(false)}
+                  className="flex-1 h-12 bg-gray-100 text-gray-400 rounded-xl font-bold text-sm"
+                >
+                  取消
+                </button>
+                <button 
+                  onClick={onCancel}
+                  className="flex-1 h-12 bg-red-500 text-white rounded-xl font-bold text-sm shadow-lg shadow-red-200"
+                >
+                  确定
                 </button>
               </div>
             </motion.div>
@@ -528,151 +1056,45 @@ function MaskManagement({ masks, onBack, updateState }: {
   );
 }
 
-// --- 5. Create Character Modal ---
-function CreateCharModal({ onClose, onCreate }: { onClose: () => void, onCreate: (c: CharCharacter) => void }) {
-  const [step, setStep] = useState(1);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    title: '',
-    description: '',
-    persona: '',
-    greeting: '',
-    tags: [] as string[],
-    avatar: `https://picsum.photos/seed/${Date.now()}/400/600`
-  });
-
-  const handleNext = () => setStep(s => s + 1);
-  const handleBack = () => setStep(s => s - 1);
-
-  const handleSubmit = () => {
-    onCreate({
-      ...formData,
-      id: `char-${Date.now()}`,
-      affection: 0,
-      mood: '平静',
-      isFavorite: false
-    });
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      try {
-        const compressed = await compressImage(file, 800, 1200, 0.6);
-        setFormData(f => ({ ...f, avatar: compressed }));
-      } catch (err) {
-        console.error('Image compression failed', err);
-      }
-    }
-  };
-
+function InputRow({ label, value, onChange, type = "text", placeholder }: { label: string, value: string, onChange: (v: string) => void, type?: string, placeholder?: string }) {
   return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-black/40 backdrop-blur-md flex items-end sm:items-center justify-center"
-    >
-      <motion.div 
-        initial={{ y: '100%' }}
-        animate={{ y: 0 }}
-        exit={{ y: '100%' }}
-        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="w-full max-w-md bg-white rounded-t-[3rem] sm:rounded-[3rem] overflow-hidden flex flex-col max-h-[90vh]"
-      >
-        <div className="p-8 overflow-y-auto">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-2xl font-bold text-gray-800 font-serif">创建新角色</h2>
-            <button onClick={onClose} className="p-2 text-gray-300 hover:text-gray-900 transition-colors">
-              <X className="w-6 h-6" />
-            </button>
-          </div>
+    <div className="flex items-center gap-4">
+      <div className="w-16 h-8 bg-gray-100 rounded-lg flex items-center justify-center text-[10px] font-bold text-gray-400">{label}</div>
+      <div className="flex-1 h-10 bg-gray-50 rounded-xl px-4 flex items-center border border-gray-100">
+        <input 
+          type={type}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full bg-transparent outline-none text-sm text-gray-600"
+        />
+      </div>
+    </div>
+  );
+}
 
-          <div className="space-y-8">
-            {step === 1 && (
-              <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="space-y-6">
-                <div className="flex justify-center">
-                  <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                    <img src={formData.avatar} className="w-32 h-40 rounded-[2rem] object-cover border-4 border-pink-50 shadow-xl" alt="" referrerPolicy="no-referrer" />
-                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white rounded-[2rem]">
-                      <Camera className="w-8 h-8" />
-                    </div>
-                    <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">角色姓名</label>
-                    <input 
-                      type="text" 
-                      value={formData.name}
-                      onChange={e => setFormData(f => ({ ...f, name: e.target.value }))}
-                      placeholder="例如：林深"
-                      className="w-full bg-transparent outline-none text-sm font-bold text-gray-800"
-                    />
-                  </div>
-                  <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">角色头衔</label>
-                    <input 
-                      type="text" 
-                      value={formData.title}
-                      onChange={e => setFormData(f => ({ ...f, title: e.target.value }))}
-                      placeholder="例如：森林守护者"
-                      className="w-full bg-transparent outline-none text-sm font-bold text-gray-800"
-                    />
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {step === 2 && (
-              <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="space-y-6">
-                <div className="space-y-4">
-                  <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Persona (AI Prompt)</label>
-                    <textarea 
-                      value={formData.persona}
-                      onChange={e => setFormData(f => ({ ...f, persona: e.target.value }))}
-                      placeholder="Describe how the AI should speak and act..."
-                      className="w-full bg-transparent outline-none text-sm text-gray-600 h-32 resize-none"
-                    />
-                  </div>
-                  <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Greeting</label>
-                    <input 
-                      type="text" 
-                      value={formData.greeting}
-                      onChange={e => setFormData(f => ({ ...f, greeting: e.target.value }))}
-                      placeholder="What will the character say when they first meet you?"
-                      className="w-full bg-transparent outline-none text-sm text-gray-600"
-                    />
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </div>
-        </div>
-
-        <div className="p-8 bg-gray-50 flex gap-4">
-          {step > 1 && (
-            <button 
-              onClick={handleBack}
-              className="px-8 py-4 text-sm font-bold text-gray-400 hover:text-gray-900 transition-colors"
-            >
-              Back
-            </button>
-          )}
-          <button 
-            onClick={step === 2 ? handleSubmit : handleNext}
-            disabled={step === 1 && !formData.name}
-            className="flex-1 h-14 bg-gray-900 text-white rounded-2xl flex items-center justify-center gap-2 font-bold shadow-xl shadow-gray-200 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100"
-          >
-            <span>{step === 2 ? 'Finish' : 'Next'}</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
+function DetailBox({ title, value, onChange, isNsfw = false, singleLine = false }: { title: string, value: string, onChange: (v: string) => void, isNsfw?: boolean, singleLine?: boolean }) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <div className="px-4 py-1.5 bg-gray-100 rounded-xl text-xs font-bold text-gray-400">{title}</div>
+        {isNsfw && <span className="text-[10px] text-red-400 font-bold border border-red-100 px-1.5 rounded-md">18+</span>}
+      </div>
+      <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+        {singleLine ? (
+          <input 
+            value={value}
+            onChange={e => onChange(e.target.value)}
+            className="w-full bg-transparent outline-none text-sm text-gray-600"
+          />
+        ) : (
+          <textarea 
+            value={value}
+            onChange={e => onChange(e.target.value)}
+            className="w-full bg-transparent outline-none text-sm text-gray-600 min-h-[100px] resize-none leading-relaxed"
+          />
+        )}
+      </div>
+    </div>
   );
 }

@@ -29,6 +29,14 @@ body {
   margin-bottom: env(safe-area-inset-bottom);
 }
 
+@utility scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 /* Custom scrollbar for white theme */
 ::-webkit-scrollbar {
   width: 6px;

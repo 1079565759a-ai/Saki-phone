@@ -37,6 +37,8 @@ import {
   FileText,
   History,
   Trash2,
+  Download,
+  Upload,
   Play,
   Pause,
   SkipBack,
@@ -597,15 +599,19 @@ const FloatingBall = ({
     
     setIsGenerating(true);
     try {
-      const saved = localStorage.getItem('ins_state');
+      const saved = localStorage.getItem('gala_game_state');
       let persona = "一个可爱的AI伙伴";
       let nickname = "AI";
       if (saved) {
-        const insState = JSON.parse(saved);
-        const ai = insState.aiDatabase.find((a: any) => a.id === aiId);
-        if (ai) {
-          persona = ai.persona;
-          nickname = ai.nickname;
+        const state = JSON.parse(saved);
+        // Check characters first
+        const char = state.charCharacters?.find((c: any) => c.id === state.selectedCharId) || state.charCharacters?.[0];
+        if (char) {
+          persona = char.persona;
+          nickname = char.name;
+        } else {
+          persona = state.systemPrompt;
+          nickname = state.chatAiName;
         }
       }
 
@@ -926,30 +932,27 @@ export default function App() {
       chatAiName: "Beary",
       chatAiAvatar: "https://picsum.photos/seed/bear/100/100",
       chatStatus: "Online",
-      charCharacters: [
-        {
-          id: 'char-1',
-          name: 'Lin Shen',
-          title: 'Forest Guardian',
-          avatar: 'https://picsum.photos/seed/forest/200/200',
-          tags: ['Gentle', 'Mysterious', 'Nature'],
-          description: 'A guardian living deep in the misty forest, with the ability to communicate with plants.',
-          persona: 'You are a gentle and mysterious forest guardian. You speak softly and often use natural imagery.',
-          greeting: 'Traveler, welcome to this forest. The wind here will tell you all the secrets.',
-          affection: 60,
-          mood: 'Serene',
-          isFavorite: true
-        }
-      ],
-      personaMasks: [
-        {
-          id: 'mask-1',
-          name: 'Curious Traveler',
-          avatar: 'https://picsum.photos/seed/traveler/200/200',
-          description: 'A traveler full of curiosity about the world, wandering everywhere.',
-          boundCharacterIds: []
-        }
-      ],
+      chatAiOpeningMessages: [] as string[],
+      chatHistories: {} as Record<string, { role: 'user' | 'ai', text: string }[]>,
+      charCharacters: [],
+      charCustomCSS: `/* 首页角色卡样式 */
+.char-card {
+  border-radius: 0px !important;
+  background: rgba(255, 255, 255, 0.6) !important;
+  backdrop-filter: blur(20px) !important;
+}
+
+/* 大图页面样式 */
+.detail-view {
+  background: #F5F5F5 !important;
+}
+
+/* 导出图片样式 */
+.export-image {
+  padding: 20px;
+  background: white;
+}`,
+      personaMasks: [],
       selectedCharId: null as string | null,
       selectedMaskId: null as string | null,
       ticketLabel: "ADMIT ONE",
@@ -1062,6 +1065,29 @@ export default function App() {
     return initialState;
   });
 
+  useEffect(() => {
+    if (isChatOpen) {
+      const selectedChar = appState.charCharacters?.find((c: any) => c.id === appState.selectedCharId) || appState.charCharacters?.[0];
+      if (selectedChar && selectedChar.openingMessages && selectedChar.openingMessages.length > 0) {
+        // Only send if messages are empty (new chat)
+        if (messages.length === 1 && messages[0].role === 'ai' && messages[0].text.includes('你好呀')) {
+          const sendMessages = async () => {
+            // Clear default message
+            setMessages([]);
+            for (const msg of selectedChar.openingMessages) {
+              if (msg.trim()) {
+                setMessages(prev => [...prev, { role: 'ai', text: msg }]);
+                // Small delay between messages
+                await new Promise(resolve => setTimeout(resolve, 800));
+              }
+            }
+          };
+          sendMessages();
+        }
+      }
+    }
+  }, [isChatOpen, appState.selectedCharId, messages.length]);
+
   // Standalone mode detection
   const [isStandalone, setIsStandalone] = useState(false);
 
@@ -1073,6 +1099,18 @@ export default function App() {
     checkStandalone();
     const mediaQuery = window.matchMedia('(display-mode: standalone)');
     mediaQuery.addEventListener('change', checkStandalone);
+
+    // Request persistent storage
+    if (navigator.storage && navigator.storage.persist) {
+      navigator.storage.persist().then(persistent => {
+        if (persistent) {
+          console.log("Storage will not be cleared except by explicit user action");
+        } else {
+          console.log("Storage may be cleared under storage pressure");
+        }
+      });
+    }
+
     return () => mediaQuery.removeEventListener('change', checkStandalone);
   }, []);
 
@@ -1141,6 +1179,37 @@ export default function App() {
     }
   }, []);
 
+  const handleBackupData = () => {
+    const data = JSON.stringify(appState, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sakura_machine_backup_${format(new Date(), 'yyyyMMdd_HHmm')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleRestoreData = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const data = JSON.parse(event.target?.result as string);
+          if (data && typeof data === 'object') {
+            setAppState(data);
+            alert('数据恢复成功！');
+            window.location.reload();
+          }
+        } catch (err) {
+          alert('数据恢复失败，请检查文件格式。');
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+
   const [isEditMode, setIsEditMode] = useState(false);
   const [gridIcons, setGridIcons] = useState(['heartlink', 'chat', 'galagame', 'phone']);
   const [secondPageIcons, setSecondPageIcons] = useState(['study', 'lucky', 'memory']);
@@ -1154,7 +1223,10 @@ export default function App() {
   // and handle layout-only fullscreen.
 
   const updateState = (key: keyof typeof appState, value: any) => {
-    setAppState(prev => ({ ...prev, [key]: value }));
+    setAppState(prev => {
+      const newValue = typeof value === 'function' ? value(prev[key]) : value;
+      return { ...prev, [key]: newValue };
+    });
   };
 
   const updateLabel = (key: string, value: string) => {
@@ -1326,6 +1398,35 @@ export default function App() {
         content: m.text
       }));
 
+      // Get character detailed persona
+      const selectedChar = appState.charCharacters?.find((c: any) => c.id === appState.selectedCharId) || appState.charCharacters?.[0];
+      
+      let persona = appState.systemPrompt;
+      let aiName = appState.chatAiName;
+
+      if (selectedChar) {
+        aiName = selectedChar.name;
+        persona = `
+你现在扮演角色：${selectedChar.name}
+性别：${selectedChar.gender}
+年龄：${selectedChar.age}
+生日：${selectedChar.birthday}
+身份：${selectedChar.identity}
+外貌特征：${selectedChar.appearance}
+性格特点：${selectedChar.personality}
+成长经历：${selectedChar.background}
+人际关系：${selectedChar.relationships}
+用语习惯：${selectedChar.speechStyle}
+与user相关：${selectedChar.userRelated}
+NSFW设定(18+)：${selectedChar.nsfw}
+其他补充：${selectedChar.others}
+当前场景剧情：${selectedChar.scenario}
+开场白：${selectedChar.openingRemark}
+
+请严格遵守以上设定进行回复。保持自然真实的活人感。
+`;
+      }
+
       if (appState.apiKey) {
         // Use custom API
         const response = await fetch(`${appState.apiBaseUrl.replace(/\/$/, '')}/chat/completions`, {
@@ -1337,7 +1438,7 @@ export default function App() {
           body: JSON.stringify({
             model: appState.selectedModel,
             messages: [
-              { role: 'system', content: `${appState.systemPrompt} 你的名字叫'${appState.chatAiName}'。` },
+              { role: 'system', content: `${persona} 你的名字叫'${aiName}'。` },
               ...history,
               { role: 'user', content: userMsg }
             ],
@@ -1356,7 +1457,7 @@ export default function App() {
           model: "gemini-3-flash-preview",
           contents: userMsg,
           config: {
-            systemInstruction: `${appState.systemPrompt} 你的名字叫'${appState.chatAiName}'。`
+            systemInstruction: `${persona} 你的名字叫'${aiName}'。`
           }
         });
         
@@ -1870,6 +1971,8 @@ export default function App() {
                 registeredUser={appState.registeredUser}
                 onRegister={handleRegister}
                 onLogin={handleLogin}
+                appState={appState}
+                updateState={updateState}
               />
             </motion.div>
           ) : isGalaGameOpen ? (
@@ -1970,7 +2073,8 @@ export default function App() {
                     floating: '悬浮球',
                     account: '账户',
                     language: t.language,
-                    beautify: t.beautify
+                    beautify: t.beautify,
+                    data: '数据管理'
                   }[activeCategory] : t.settings}
                 </span>
                 <div className="w-10" />
@@ -1990,6 +2094,7 @@ export default function App() {
                       { id: 'floating', label: '悬浮球', icon: Circle },
                       { id: 'account', label: '账户', icon: Users },
                       { id: 'worldbook', label: '世界书', icon: Book },
+                      { id: 'data', label: '数据管理', icon: History },
                     ].map(cat => (
                       <button 
                         key={cat.id}
@@ -2353,6 +2458,45 @@ export default function App() {
                         <Book className="w-12 h-12 text-pink-100 mx-auto mb-4" />
                         <h3 className="text-sm font-bold text-gray-500 mb-2">世界书</h3>
                         <p className="text-xs text-gray-300 leading-relaxed">管理您的世界设定与知识库，让 AI 更加了解您的故事背景。</p>
+                      </div>
+                    </section>
+                  ) : activeCategory === 'data' ? (
+                    <section className="space-y-8">
+                      <div className="bg-white border border-gray-100 p-8 text-center">
+                        <History className="w-12 h-12 text-gray-400/20 mx-auto mb-4" />
+                        <h3 className="text-sm font-bold text-gray-900 mb-2">数据管理</h3>
+                        <p className="text-[10px] text-gray-400 leading-relaxed uppercase tracking-widest">备份与恢复您的本地数据</p>
+                      </div>
+
+                      <div className="bg-white border border-gray-100 p-6 space-y-6">
+                        <div className="space-y-2">
+                          <h4 className="text-xs font-bold text-gray-900 uppercase tracking-widest">本地持久化</h4>
+                          <p className="text-[10px] text-gray-400 leading-relaxed">
+                            您的数据（角色卡、聊天记录、设置等）仅存储在当前浏览器的本地缓存中。
+                            <br /><br />
+                            <strong>注意：</strong> 如果您更换了访问链接（域名），或者清理了浏览器缓存，数据将会丢失。建议定期导出备份。
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3">
+                          <button 
+                            onClick={handleBackupData}
+                            className="w-full py-4 bg-gray-900 text-white text-[10px] font-bold uppercase tracking-widest hover:bg-black transition-all flex items-center justify-center gap-2"
+                          >
+                            <Download className="w-4 h-4" /> 导出备份文件 (.json)
+                          </button>
+                          
+                          <label className="w-full py-4 border border-gray-900 text-gray-900 text-[10px] font-bold uppercase tracking-widest hover:bg-gray-50 transition-all flex items-center justify-center gap-2 cursor-pointer">
+                            <Upload className="w-4 h-4" /> 导入备份文件
+                            <input type="file" className="hidden" accept=".json" onChange={handleRestoreData} />
+                          </label>
+                        </div>
+
+                        <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl">
+                          <p className="text-[10px] text-blue-600 leading-relaxed">
+                            <strong>同步提示：</strong> 添加到主屏幕的应用会自动同步更新代码，但数据仍保留在本地。只要域名不变，数据就不会丢失。
+                          </p>
+                        </div>
                       </div>
                     </section>
                   ) : activeCategory === 'icons' ? (
