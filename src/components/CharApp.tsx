@@ -34,7 +34,6 @@ export interface CharCharacter {
   gender: string;
   age: string;
   birthday: string;
-  identity: string; // 5th basic info
   persona: string; // Combined character details
   openingMessages: string[];
   avatar: string;
@@ -97,7 +96,6 @@ export default function CharApp({ onClose, appState, updateState, setIsChatOpen,
       gender: '',
       age: '',
       birthday: '',
-      identity: '',
       persona: '',
       openingMessages: [''],
       avatar: '',
@@ -135,7 +133,6 @@ export default function CharApp({ onClose, appState, updateState, setIsChatOpen,
 姓名：${char.name}
 性别：${char.gender}
 年龄：${char.age}
-身份：${char.identity}
 
 # 详细设定
 ${char.persona}
@@ -221,6 +218,7 @@ ${char.persona}
               onCancel={() => setViewMode('list')}
               setViewMode={setViewMode}
               onAdd={handleAddClick}
+              appState={appState}
             />
           </div>
         )}
@@ -276,7 +274,7 @@ function ListView({ characters, onClose, onAdd, onEdit, onDelete, onTogglePin, o
         <button onClick={onClose} className="p-2 -ml-2 text-gray-400 hover:text-gray-900 transition-colors">
           <ChevronLeft className="w-8 h-8" />
         </button>
-        <h1 className="text-xl font-medium text-gray-800 tracking-tight">Characters</h1>
+        <h1 className="text-xl font-serif font-medium text-gray-800 tracking-tight">Characters</h1>
         <div className="flex items-center gap-2">
           <button onClick={() => setViewMode('settings')} className="p-2 text-gray-400 hover:text-gray-900 transition-colors">
             <SettingsIcon className="w-6 h-6" />
@@ -334,62 +332,61 @@ function ListView({ characters, onClose, onAdd, onEdit, onDelete, onTogglePin, o
 
                 {/* About me bubble */}
                 <div className="absolute -top-4 left-20 z-20">
-                  <div className="bg-white px-3 py-1 rounded-lg text-[8px] font-bold text-gray-400 shadow-sm border border-gray-50">
+                  <div className="bg-white/80 backdrop-blur-md px-3 py-1 rounded-lg text-[8px] font-bold text-gray-400 shadow-sm border border-white/40">
                     About me
                   </div>
                 </div>
 
                 <div 
                   onClick={() => onSelect(char)}
-                  className="char-card bg-white/60 backdrop-blur-md border border-white/40 shadow-xl relative group cursor-pointer aspect-[3/4] rounded-none overflow-hidden"
+                  className="char-card bg-white/40 backdrop-blur-xl border border-white/30 shadow-2xl relative group cursor-pointer aspect-[3/4] rounded-[2.5rem] overflow-hidden transition-all hover:scale-[1.02]"
                 >
                   {/* Background Image (Edges only) */}
                   {char.backgroundImage && (
-                    <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-40">
-                      <div className="h-1/4 w-full overflow-hidden">
+                    <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-30">
+                      <div className="h-1/3 w-full overflow-hidden">
                         <img src={char.backgroundImage} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
                       </div>
                       <div className="flex-1" />
-                      <div className="h-1/4 w-full overflow-hidden">
+                      <div className="h-1/3 w-full overflow-hidden">
                         <img src={char.backgroundImage} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
                       </div>
                     </div>
                   )}
                   
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
 
                   {/* Card Actions (Bottom Right) */}
-                  <div className="absolute bottom-3 right-3 flex gap-1.5 z-30">
+                  <div className="absolute bottom-4 right-4 flex gap-2 z-30">
                     <button 
                       onClick={(e) => { e.stopPropagation(); onTogglePin(char.id); }}
                       className={cn(
-                        "w-7 h-7 flex items-center justify-center rounded-full backdrop-blur-md border border-white/20 transition-all",
-                        char.isPinned ? "bg-yellow-400 text-white" : "bg-white/40 text-white"
+                        "w-8 h-8 flex items-center justify-center rounded-full backdrop-blur-md border border-white/20 transition-all",
+                        char.isPinned ? "bg-yellow-400 text-white" : "bg-white/20 text-white"
                       )}
                     >
-                      <Star className="w-3 h-3" fill={char.isPinned ? "currentColor" : "none"} />
+                      <Star className="w-3.5 h-3.5" fill={char.isPinned ? "currentColor" : "none"} />
                     </button>
                     <button 
                       onClick={(e) => { e.stopPropagation(); onDelete(char.id); }}
-                      className="w-7 h-7 flex items-center justify-center rounded-full bg-white/40 backdrop-blur-md border border-white/20 text-white hover:bg-red-500 transition-all"
+                      className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-md border border-white/20 text-white hover:bg-red-500 transition-all"
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
 
-                  <div className="absolute bottom-4 left-4 right-12 text-white pointer-events-none z-10">
-                    <div className="text-xs font-bold truncate mb-0.5">{char.name || "未命名"}</div>
-                    <div className="text-[8px] opacity-70 truncate">WXID: {char.wechatId}</div>
-                    <div className="text-[8px] opacity-70 truncate mt-1">{char.identity || "暂无身份信息"}</div>
+                  <div className="absolute bottom-5 left-5 right-14 text-white pointer-events-none z-10">
+                    <div className="text-sm font-bold truncate mb-1 tracking-tight">{char.name || "未命名"}</div>
+                    <div className="text-[9px] opacity-80 truncate font-medium tracking-wider">ID: {char.wechatId}</div>
                   </div>
                 </div>
 
                 {/* QR Code below card */}
                 <div className="mt-2 flex flex-col items-center">
-                  <div className="p-1 bg-white rounded-lg shadow-sm border border-gray-100">
+                  <div className="p-1 bg-white/80 backdrop-blur-md rounded-lg shadow-sm border border-white/40">
                     <QRCodeSVG value={`wechat://add/${char.wechatId}`} size={40} />
                   </div>
-                  <span className="text-[6px] text-gray-400 mt-1 font-bold tracking-tighter">SCAN TO ADD</span>
+                  <span className="text-[6px] text-gray-400 mt-1 font-bold tracking-tighter uppercase">SCAN TO ADD</span>
                 </div>
               </Reorder.Item>
             ))}
@@ -408,26 +405,26 @@ function DetailView({ character, onBack, onEdit, onSelect }: { character: CharCh
         <button onClick={onBack} className="p-2 -ml-2 text-gray-400 hover:text-gray-900 transition-colors">
           <ChevronLeft className="w-8 h-8" />
         </button>
-        <div className="text-sm font-bold text-gray-400 tracking-widest uppercase">Character Detail</div>
+        <div className="text-sm font-serif font-bold text-gray-400 tracking-widest uppercase">Character Detail</div>
         <div className="w-8" />
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 pb-32 scrollbar-hide">
         <div className="relative pt-20">
-          <div className="bg-white/70 backdrop-blur-xl border border-white/40 shadow-2xl rounded-none relative overflow-hidden">
+          <div className="bg-white/40 backdrop-blur-2xl border border-white/40 shadow-2xl rounded-[3rem] relative overflow-hidden">
             {/* Background Image */}
-            <div className="h-64 w-full relative">
+            <div className="h-72 w-full relative">
               {character.backgroundImage ? (
                 <img src={character.backgroundImage} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
               ) : (
-                <div className="w-full h-full bg-gray-100" />
+                <div className="w-full h-full bg-gray-100/50" />
               )}
-              <div className="absolute inset-0 bg-gradient-to-t from-white/80 via-transparent to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-white/60 via-transparent to-transparent" />
             </div>
 
             <div className="p-10 pt-16 relative">
               {/* Avatar */}
-              <div className="absolute -top-16 left-10 w-32 h-32 rounded-full border-4 border-white shadow-2xl overflow-hidden bg-gray-50 z-30">
+              <div className="absolute -top-20 left-10 w-36 h-36 rounded-full border-4 border-white shadow-2xl overflow-hidden bg-gray-50 z-30">
                 {character.avatar ? (
                   <img src={character.avatar} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
                 ) : (
@@ -437,39 +434,34 @@ function DetailView({ character, onBack, onEdit, onSelect }: { character: CharCh
                 )}
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-8">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">{character.name}</h2>
-                  <p className="text-sm text-gray-400">WXID: {character.wechatId}</p>
+                  <h2 className="text-3xl font-serif font-bold text-gray-900 tracking-tight">{character.name}</h2>
+                  <p className="text-xs font-medium text-gray-400 mt-1 uppercase tracking-widest">WXID: {character.wechatId}</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gray-50 p-3 rounded-xl">
-                    <span className="text-[10px] text-gray-400 block mb-1">Gender</span>
+                  <div className="bg-white/50 backdrop-blur-md p-4 rounded-2xl border border-white/40">
+                    <span className="text-[10px] font-bold text-gray-400 block mb-1 uppercase tracking-widest">Gender</span>
                     <span className="text-sm font-bold text-gray-700">{character.gender || "Unknown"}</span>
                   </div>
-                  <div className="bg-gray-50 p-3 rounded-xl">
-                    <span className="text-[10px] text-gray-400 block mb-1">Age</span>
+                  <div className="bg-white/50 backdrop-blur-md p-4 rounded-2xl border border-white/40">
+                    <span className="text-[10px] font-bold text-gray-400 block mb-1 uppercase tracking-widest">Age</span>
                     <span className="text-sm font-bold text-gray-700">{character.age || "Unknown"}</span>
                   </div>
                 </div>
 
-                <div className="bg-gray-50 p-4 rounded-2xl">
-                  <span className="text-[10px] text-gray-400 block mb-2 uppercase tracking-widest">Identity</span>
-                  <p className="text-sm text-gray-700 leading-relaxed">{character.identity || "No identity info"}</p>
-                </div>
-
-                <div className="bg-gray-50 p-4 rounded-2xl">
-                  <span className="text-[10px] text-gray-400 block mb-2 uppercase tracking-widest">Persona</span>
-                  <p className="text-sm text-gray-700 leading-relaxed">{character.persona || "No persona info"}</p>
+                <div className="bg-white/50 backdrop-blur-md p-6 rounded-[2rem] border border-white/40">
+                  <span className="text-[10px] font-bold text-gray-400 block mb-3 uppercase tracking-widest">Persona</span>
+                  <p className="text-sm text-gray-700 leading-relaxed font-medium">{character.persona || "No persona info"}</p>
                 </div>
               </div>
 
               <div className="mt-12 flex flex-col items-center gap-4">
-                <div className="p-2 bg-white rounded-2xl shadow-lg border border-gray-100">
+                <div className="p-2 bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-white/40">
                   <QRCodeSVG value={`wechat://add/${character.wechatId}`} size={120} />
                 </div>
-                <p className="text-[10px] text-gray-400 font-bold tracking-widest">SCAN TO ADD ON WECHAT</p>
+                <p className="text-[10px] text-gray-400 font-bold tracking-widest uppercase">SCAN TO ADD ON WECHAT</p>
               </div>
             </div>
           </div>
@@ -814,17 +806,66 @@ function SettingsView({ appState, updateState, onBack }: { appState: any, update
   );
 }
 
-function EditView({ character, onSave, onCancel, setViewMode, onAdd }: { 
+function EditView({ character, onSave, onCancel, setViewMode, onAdd, appState }: { 
   character: CharCharacter, 
   onSave: (c: CharCharacter) => void,
   onCancel: () => void,
   setViewMode: (m: ViewMode) => void,
-  onAdd: () => void
+  onAdd: () => void,
+  appState: any
 }) {
   const [formData, setFormData] = useState(character);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const bgInputRef = useRef<HTMLInputElement>(null);
+
+  const generateFriendRequest = async () => {
+    if (!formData.persona) {
+      alert('请先填写角色设定，以便生成匹配的申请消息');
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const url = appState.apiBaseUrl.endsWith('/') 
+        ? `${appState.apiBaseUrl}chat/completions` 
+        : `${appState.apiBaseUrl}/chat/completions`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${appState.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: appState.selectedModel || "gpt-3.5-turbo",
+          messages: [
+            { 
+              role: 'system', 
+              content: `你是一个角色卡设计助手。请根据以下角色设定，为该角色生成一条简短、优雅、符合其性格的微信好友申请消息。直接返回消息内容，不要有任何多余文字。
+              
+              角色设定：
+              ${formData.persona}` 
+            }
+          ],
+          stream: false
+        })
+      });
+
+      if (!response.ok) throw new Error('生成失败');
+      const data = await response.json();
+      const msg = data.choices?.[0]?.message?.content?.trim();
+      if (msg) {
+        setFormData(prev => ({ ...prev, addRequestMsg: msg }));
+      }
+    } catch (err) {
+      console.error('Generation failed', err);
+      alert('生成失败，请检查 API 配置');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const handleBack = () => {
     const isChanged = JSON.stringify(formData) !== JSON.stringify(character);
@@ -929,7 +970,7 @@ function EditView({ character, onSave, onCancel, setViewMode, onAdd }: {
 
                 {/* About me bubble (Rounded Rectangle) */}
                 <div className="ml-32 -mt-6 mb-10">
-                  <div className="inline-block bg-white px-5 py-2 rounded-xl text-xs font-bold text-gray-400 shadow-md border border-gray-100">
+                  <div className="inline-block bg-white/80 backdrop-blur-md px-5 py-2 rounded-xl text-xs font-bold text-gray-400 shadow-md border border-white/40">
                     About me
                   </div>
                 </div>
@@ -939,11 +980,11 @@ function EditView({ character, onSave, onCancel, setViewMode, onAdd }: {
                   {/* Basic Info */}
                   <section className="space-y-8">
                     <div className="flex justify-center">
-                      <div className="px-8 py-2.5 bg-gray-100/80 rounded-xl text-xs font-bold text-gray-400 text-center shadow-sm">基础信息</div>
+                      <div className="px-8 py-2.5 bg-white shadow-sm border border-gray-100 rounded-2xl text-[10px] font-bold text-gray-400 text-center uppercase tracking-widest">Basic Info</div>
                     </div>
                     <div className="space-y-4">
-                      <InputRow label="姓名" value={formData.name} onChange={v => setFormData(p => ({ ...p, name: v }))} />
-                      <InputRow label="性别" value={formData.gender} onChange={v => setFormData(p => ({ ...p, gender: v }))} />
+                      <InputRow label="姓名" value={formData.name} onChange={v => setFormData(p => ({ ...p, name: v }))} placeholder="输入角色姓名" />
+                      <InputRow label="性别" value={formData.gender} onChange={v => setFormData(p => ({ ...p, gender: v }))} placeholder="男 / 女 / 其他" />
                       <InputRow 
                         label="年龄" 
                         value={formData.age} 
@@ -960,18 +1001,17 @@ function EditView({ character, onSave, onCancel, setViewMode, onAdd }: {
                         onChange={v => setFormData(p => ({ ...p, birthday: v }))} 
                         type="date"
                       />
-                      <InputRow label="身份" value={formData.identity} onChange={v => setFormData(p => ({ ...p, identity: v }))} />
-                      <InputRow label="微信号" value={formData.wechatId} onChange={v => setFormData(p => ({ ...p, wechatId: v }))} />
+                      <InputRow label="微信号" value={formData.wechatId} onChange={v => setFormData(p => ({ ...p, wechatId: v }))} placeholder="唯一标识符" />
                     </div>
                   </section>
 
                   {/* WeChat Interaction Settings */}
                   <section className="space-y-8">
                     <div className="flex justify-center">
-                      <div className="px-8 py-2.5 bg-gray-100/80 rounded-xl text-xs font-bold text-gray-400 text-center shadow-sm">WeChat 互动设置</div>
+                      <div className="px-8 py-2.5 bg-white shadow-sm border border-gray-100 rounded-2xl text-[10px] font-bold text-gray-400 text-center uppercase tracking-widest">WeChat Settings</div>
                     </div>
                     <div className="space-y-6">
-                      <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                      <div className="flex items-center justify-between bg-white/60 backdrop-blur-md p-5 rounded-[2rem] border border-white/40 shadow-sm">
                         <div className="space-y-1">
                           <div className="text-sm font-bold text-gray-700">由TA加你</div>
                           <div className="text-[10px] text-gray-400">开启后，角色会在微信主动向你发送好友申请</div>
@@ -991,26 +1031,39 @@ function EditView({ character, onSave, onCancel, setViewMode, onAdd }: {
                       </div>
                       
                       {formData.autoAddUser && (
-                        <DetailBox 
-                          title="好友申请信息" 
-                          value={formData.addRequestMsg} 
-                          onChange={v => setFormData(p => ({ ...p, addRequestMsg: v }))} 
-                          singleLine 
-                        />
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between px-1">
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">好友申请信息</label>
+                            <button 
+                              onClick={generateFriendRequest}
+                              disabled={isGenerating}
+                              className="text-[10px] font-bold text-blue-500 hover:text-blue-600 disabled:opacity-50 flex items-center gap-1"
+                            >
+                              {isGenerating ? <RefreshCw className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                              AI 生成
+                            </button>
+                          </div>
+                          <DetailBox 
+                            title="" 
+                            value={formData.addRequestMsg} 
+                            onChange={v => setFormData(p => ({ ...p, addRequestMsg: v }))} 
+                            singleLine 
+                          />
+                        </div>
                       )}
                     </div>
                   </section>
 
                   {/* Detail Info */}
                   <section className="space-y-6">
-                    <DetailBox title="角色人设" value={formData.persona} onChange={v => setFormData(p => ({ ...p, persona: v }))} />
+                    <DetailBox title="Persona" value={formData.persona} onChange={v => setFormData(p => ({ ...p, persona: v }))} />
                   </section>
 
                   {/* Interaction */}
                   <section className="space-y-8">
                     <div className="space-y-4">
                       <div className="flex justify-start">
-                        <div className="px-4 py-1.5 bg-gray-100 rounded-xl text-xs font-bold text-gray-400">角色开场消息</div>
+                        <div className="px-5 py-2 bg-white shadow-sm border border-gray-100 rounded-xl text-[10px] font-bold text-gray-400 uppercase tracking-widest">Opening Messages</div>
                       </div>
                       <div className="space-y-3">
                         {formData.openingMessages.map((msg, i) => (
@@ -1102,14 +1155,14 @@ function EditView({ character, onSave, onCancel, setViewMode, onAdd }: {
 function InputRow({ label, value, onChange, type = "text", placeholder }: { label: string, value: string, onChange: (v: string) => void, type?: string, placeholder?: string }) {
   return (
     <div className="flex items-center gap-4">
-      <div className="w-16 h-8 bg-gray-100 rounded-lg flex items-center justify-center text-[10px] font-bold text-gray-400">{label}</div>
-      <div className="flex-1 h-10 bg-gray-50 rounded-xl px-4 flex items-center border border-gray-100">
+      <div className="w-16 h-9 bg-white shadow-sm border border-gray-100 rounded-xl flex items-center justify-center text-[10px] font-bold text-gray-400 uppercase tracking-widest">{label}</div>
+      <div className="flex-1 h-11 bg-white/50 backdrop-blur-md rounded-2xl px-5 flex items-center border border-white/40 shadow-sm">
         <input 
           type={type}
           value={value}
           onChange={e => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full bg-transparent outline-none text-sm text-gray-600"
+          className="w-full bg-transparent outline-none text-sm text-gray-700 font-medium placeholder:text-gray-300"
         />
       </div>
     </div>
@@ -1118,23 +1171,25 @@ function InputRow({ label, value, onChange, type = "text", placeholder }: { labe
 
 function DetailBox({ title, value, onChange, isNsfw = false, singleLine = false }: { title: string, value: string, onChange: (v: string) => void, isNsfw?: boolean, singleLine?: boolean }) {
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <div className="px-4 py-1.5 bg-gray-100 rounded-xl text-xs font-bold text-gray-400">{title}</div>
-        {isNsfw && <span className="text-[10px] text-red-400 font-bold border border-red-100 px-1.5 rounded-md">18+</span>}
-      </div>
-      <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+    <div className="space-y-4">
+      {title && (
+        <div className="flex items-center gap-2">
+          <div className="px-5 py-2 bg-white shadow-sm border border-gray-100 rounded-xl text-[10px] font-bold text-gray-400 uppercase tracking-widest">{title}</div>
+          {isNsfw && <span className="text-[10px] text-red-400 font-bold border border-red-100 px-2 rounded-lg">18+</span>}
+        </div>
+      )}
+      <div className="bg-white/50 backdrop-blur-md rounded-[2rem] p-6 border border-white/40 shadow-sm">
         {singleLine ? (
           <input 
             value={value}
             onChange={e => onChange(e.target.value)}
-            className="w-full bg-transparent outline-none text-sm text-gray-600"
+            className="w-full bg-transparent outline-none text-sm text-gray-700 font-medium placeholder:text-gray-300"
           />
         ) : (
           <textarea 
             value={value}
             onChange={e => onChange(e.target.value)}
-            className="w-full bg-transparent outline-none text-sm text-gray-600 min-h-[100px] resize-none leading-relaxed"
+            className="w-full bg-transparent outline-none text-sm text-gray-700 font-medium min-h-[120px] resize-none leading-relaxed placeholder:text-gray-300"
           />
         )}
       </div>
