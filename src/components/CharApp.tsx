@@ -497,12 +497,13 @@ function DetailView({ character, onBack, onEdit, onSelect }: { character: CharCh
 
 function SettingsView({ appState, updateState, onBack }: { appState: any, updateState: (k: string, v: any) => void, onBack: () => void }) {
   const [cssInput, setCssInput] = useState(appState.charCustomCSS);
-  const [baseUrl, setBaseUrl] = useState(appState.apiBaseUrl || 'https://api.openai.com/v1');
+  const [baseUrl, setBaseUrl] = useState(appState.apiBaseUrl || 'https://api.gemai.cc');
   const [apiKey, setApiKey] = useState(appState.apiKey || '');
   const [showKey, setShowKey] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [statusMsg, setStatusMsg] = useState(appState.availableModels?.length > 0 ? `已加载 ${appState.availableModels.length} 个模型` : '未连接');
   const [manualModel, setManualModel] = useState('');
+  const [showHelp, setShowHelp] = useState(false);
 
   useEffect(() => {
     if (appState.apiBaseUrl && appState.apiKey && (!appState.availableModels || appState.availableModels.length === 0)) {
@@ -533,8 +534,8 @@ function SettingsView({ appState, updateState, onBack }: { appState: any, update
     
     const endpoints = [
       url.endsWith('/') ? `${url}models` : `${url}/models`,
+      url.endsWith('/') ? `${url}v1/models` : `${url}/v1/models`,
       url.includes('/v1') ? url.replace('/v1', '/v1beta') + '/models' : url + '/v1beta/models',
-      url.split('/v1')[0] + '/models'
     ];
 
     let success = false;
@@ -562,16 +563,16 @@ function SettingsView({ appState, updateState, onBack }: { appState: any, update
     }
 
     if (success) {
-      updateState('availableModels', models);
-      if (models.length > 0 && !models.includes(appState.selectedModel)) {
+      const uniqueModels = Array.from(new Set([...models, 'manual']));
+      updateState('availableModels', uniqueModels);
+      if (models.length > 0 && (!appState.selectedModel || !uniqueModels.includes(appState.selectedModel))) {
         updateState('selectedModel', models[0]);
       }
       setStatusMsg(`成功！已加载 ${models.length} 个模型`);
     } else {
       setStatusMsg('拉取失败，请检查地址和 Key');
-      if (!appState.availableModels || appState.availableModels.length === 0) {
-        updateState('availableModels', ['manual']);
-      }
+      updateState('availableModels', ['manual']);
+      updateState('selectedModel', 'manual');
     }
     setIsTesting(false);
   };
@@ -608,7 +609,7 @@ function SettingsView({ appState, updateState, onBack }: { appState: any, update
                 type="text"
                 value={baseUrl}
                 onChange={(e) => setBaseUrl(e.target.value)}
-                placeholder="https://api.openai.com/v1"
+                placeholder="https://api.gemai.cc"
                 className="w-full bg-white border border-gray-100 rounded-xl px-4 py-3 text-xs outline-none focus:border-blue-400 transition-colors"
               />
             </div>
@@ -703,9 +704,9 @@ function SettingsView({ appState, updateState, onBack }: { appState: any, update
             <button 
               onClick={() => {
                 if (confirm('确定要清除所有 API 配置吗？')) {
-                  setBaseUrl('');
+                  setBaseUrl('https://api.gemai.cc');
                   setApiKey('');
-                  updateState('apiBaseUrl', '');
+                  updateState('apiBaseUrl', 'https://api.gemai.cc');
                   updateState('apiKey', '');
                   updateState('availableModels', []);
                   updateState('selectedModel', '');
@@ -717,10 +718,52 @@ function SettingsView({ appState, updateState, onBack }: { appState: any, update
               清除配置
             </button>
           </div>
-          <p className="text-[10px] text-gray-400 leading-relaxed italic px-1">
-            * 帮助：API 地址通常为网关地址，Key 可在服务商后台获取。支持 OpenAI 格式接口。
-          </p>
+          <div className="flex items-center justify-between px-1">
+            <p className="text-[10px] text-gray-400 leading-relaxed italic">
+              * 提示：支持 OpenAI 格式接口。
+            </p>
+            <button 
+              onClick={() => setShowHelp(true)}
+              className="text-[10px] font-bold text-blue-500 hover:underline"
+            >
+              使用帮助
+            </button>
+          </div>
         </section>
+
+        <AnimatePresence>
+          {showHelp && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm flex items-center justify-center p-6"
+              onClick={() => setShowHelp(false)}
+            >
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl space-y-4"
+                onClick={e => e.stopPropagation()}
+              >
+                <h3 className="text-lg font-bold text-gray-900">使用帮助</h3>
+                <div className="space-y-3 text-xs text-gray-600 leading-relaxed">
+                  <p>1. <strong>API 地址</strong>：通常为网关地址，例如 <code className="bg-gray-100 px-1 rounded">https://api.gemai.cc</code>。</p>
+                  <p>2. <strong>API Key</strong>：在服务商后台注册并申请。例如在 <code className="bg-gray-100 px-1 rounded">gemai.cc</code> 注册后获取。</p>
+                  <p>3. <strong>测试连接</strong>：输入地址和 Key 后点击测试，系统会自动尝试拉取该网关支持的模型列表。</p>
+                  <p>4. <strong>手动输入</strong>：如果自动拉取失败，可选择“手动输入”并填写具体的模型 ID（如 <code className="bg-gray-100 px-1 rounded">gpt-4-turbo</code>）。</p>
+                </div>
+                <button 
+                  onClick={() => setShowHelp(false)}
+                  className="w-full py-3 bg-gray-900 text-white rounded-xl font-bold text-sm"
+                >
+                  我知道了
+                </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <section className="space-y-4">
           <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">导出角色卡</h3>

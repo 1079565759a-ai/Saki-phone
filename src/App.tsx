@@ -974,7 +974,7 @@ export default function App() {
         volume: 80,
         progress: 35
       },
-      apiBaseUrl: "https://api.openai.com/v1",
+      apiBaseUrl: "https://api.gemai.cc",
       apiKey: "",
       selectedModel: "gpt-3.5-turbo",
       availableModels: [] as string[],
