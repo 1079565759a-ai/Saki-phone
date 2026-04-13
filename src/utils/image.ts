@@ -1,5 +1,14 @@
 export const compressImage = (file: File, maxWidth = 800, maxHeight = 800, quality = 0.7): Promise<string> => {
   return new Promise((resolve, reject) => {
+    // If it's a GIF, don't compress via canvas to preserve animation
+    if (file.type === 'image/gif') {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (e) => resolve(e.target?.result as string);
+      reader.onerror = (e) => reject(e);
+      return;
+    }
+
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = (event) => {
@@ -27,7 +36,8 @@ export const compressImage = (file: File, maxWidth = 800, maxHeight = 800, quali
         const ctx = canvas.getContext('2d');
         if (ctx) {
           ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', quality));
+          const outputType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+          resolve(canvas.toDataURL(outputType, quality));
         } else {
           resolve(event.target?.result as string);
         }
