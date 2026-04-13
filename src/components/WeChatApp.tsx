@@ -36,6 +36,30 @@ interface WeChatAppProps {
   updateState: (key: string, value: any) => void;
 }
 
+export interface ChatSettings {
+  backgroundImage: string | null;
+  bubbleSize: 'small' | 'medium' | 'large';
+  myBubbleColor: string;
+  otherBubbleColor: string;
+  uiThemeColor: string;
+  fontColor: string;
+  avatarShape: 'circle' | 'square';
+  avatarSize: 'small' | 'medium' | 'large';
+  avatarFrame: string | null;
+}
+
+const defaultChatSettings: ChatSettings = {
+  backgroundImage: null,
+  bubbleSize: 'medium',
+  myBubbleColor: '#f3f4f6', // Light gray
+  otherBubbleColor: '#f9fafb', // Very light gray
+  uiThemeColor: '#ffffff',
+  fontColor: '#111827',
+  avatarShape: 'square',
+  avatarSize: 'medium',
+  avatarFrame: null,
+};
+
 export default function WeChatApp({ 
   onClose, 
   isFullscreen, 
@@ -48,6 +72,7 @@ export default function WeChatApp({
 }: WeChatAppProps) {
   const [currentPage, setCurrentPage] = useState(0); // 0: Chats, 1: Contacts, 2: Discover, 3: Me
   const [selectedChatId, setSelectedChatId] = useState<string | null>(appState.selectedCharId);
+  const [showSettings, setShowSettings] = useState(false);
   const [inputText, setInputText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -58,6 +83,11 @@ export default function WeChatApp({
   const approvedChars = appState.charCharacters.filter((c: any) => c.isFriendApproved);
   const friendRequests = appState.charCharacters.filter((c: any) => c.autoAddUser && !c.isFriendApproved);
   const chatHistory = selectedChatId ? (appState.chatHistories[selectedChatId] || []) : [];
+  
+  const chatSettings: ChatSettings = appState.chatSettings || defaultChatSettings;
+  const updateChatSettings = (newSettings: Partial<ChatSettings>) => {
+    updateState('chatSettings', { ...chatSettings, ...newSettings });
+  };
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -219,41 +249,272 @@ export default function WeChatApp({
   }
 
   if (selectedChatId && activeChar) {
+    if (showSettings) {
+      return (
+        <motion.div 
+          initial={{ x: '100%' }}
+          animate={{ x: 0 }}
+          exit={{ x: '100%' }}
+          className="absolute inset-0 bg-white flex flex-col z-[60] overflow-y-auto"
+        >
+          <div className="h-14 px-4 flex items-center justify-between border-b border-gray-100 sticky top-0 bg-white/80 backdrop-blur-md z-10">
+            <button onClick={() => setShowSettings(false)} className="p-2 hover:bg-gray-50 rounded-full transition-colors">
+              <ChevronLeft className="w-6 h-6 text-gray-900" />
+            </button>
+            <span className="text-sm font-bold text-gray-900">聊天美化设置</span>
+            <div className="w-10" />
+          </div>
+          
+          <div className="p-6 space-y-8">
+            {/* Background Image */}
+            <div className="space-y-4">
+              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-widest">背景图片</h3>
+              <div className="flex gap-4">
+                <div className="w-24 h-32 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 hover:border-gray-400 hover:text-gray-600 transition-colors cursor-pointer relative overflow-hidden">
+                  {chatSettings.backgroundImage ? (
+                    <>
+                      <img src={chatSettings.backgroundImage} className="w-full h-full object-cover" alt="bg" />
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); updateChatSettings({ backgroundImage: null }); }}
+                        className="absolute top-1 right-1 p-1 bg-black/50 text-white rounded-full"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <ImageIcon className="w-6 h-6 mb-2" />
+                      <span className="text-[10px]">上传背景</span>
+                    </>
+                  )}
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const compressed = await compressImage(file, 1080, 1920, 0.7);
+                        updateChatSettings({ backgroundImage: compressed });
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Bubble Colors */}
+            <div className="space-y-4">
+              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-widest">气泡颜色</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] text-gray-500">我的气泡</label>
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="color" 
+                      value={chatSettings.myBubbleColor}
+                      onChange={(e) => updateChatSettings({ myBubbleColor: e.target.value })}
+                      className="w-8 h-8 rounded cursor-pointer border-0 p-0"
+                    />
+                    <span className="text-xs font-mono text-gray-500">{chatSettings.myBubbleColor}</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] text-gray-500">对方气泡</label>
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="color" 
+                      value={chatSettings.otherBubbleColor}
+                      onChange={(e) => updateChatSettings({ otherBubbleColor: e.target.value })}
+                      className="w-8 h-8 rounded cursor-pointer border-0 p-0"
+                    />
+                    <span className="text-xs font-mono text-gray-500">{chatSettings.otherBubbleColor}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Global Colors */}
+            <div className="space-y-4">
+              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-widest">全局颜色</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] text-gray-500">界面主色调</label>
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="color" 
+                      value={chatSettings.uiThemeColor}
+                      onChange={(e) => updateChatSettings({ uiThemeColor: e.target.value })}
+                      className="w-8 h-8 rounded cursor-pointer border-0 p-0"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] text-gray-500">字体颜色</label>
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="color" 
+                      value={chatSettings.fontColor}
+                      onChange={(e) => updateChatSettings({ fontColor: e.target.value })}
+                      className="w-8 h-8 rounded cursor-pointer border-0 p-0"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Bubble Size */}
+            <div className="space-y-4">
+              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-widest">气泡大小</h3>
+              <div className="flex gap-2">
+                {(['small', 'medium', 'large'] as const).map(size => (
+                  <button
+                    key={size}
+                    onClick={() => updateChatSettings({ bubbleSize: size })}
+                    className={cn(
+                      "flex-1 py-2 text-xs rounded-xl border transition-all",
+                      chatSettings.bubbleSize === size 
+                        ? "border-gray-900 bg-gray-900 text-white" 
+                        : "border-gray-200 text-gray-600 hover:border-gray-400"
+                    )}
+                  >
+                    {size === 'small' ? '小' : size === 'medium' ? '中' : '大'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Avatar Settings */}
+            <div className="space-y-4">
+              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-widest">头像设置</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[10px] text-gray-500 block mb-2">形状</label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => updateChatSettings({ avatarShape: 'square' })}
+                      className={cn(
+                        "flex-1 py-2 text-xs rounded-xl border transition-all",
+                        chatSettings.avatarShape === 'square' ? "border-gray-900 bg-gray-900 text-white" : "border-gray-200"
+                      )}
+                    >
+                      圆角方形
+                    </button>
+                    <button
+                      onClick={() => updateChatSettings({ avatarShape: 'circle' })}
+                      className={cn(
+                        "flex-1 py-2 text-xs rounded-xl border transition-all",
+                        chatSettings.avatarShape === 'circle' ? "border-gray-900 bg-gray-900 text-white" : "border-gray-200"
+                      )}
+                    >
+                      圆形
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] text-gray-500 block mb-2">大小</label>
+                  <div className="flex gap-2">
+                    {(['small', 'medium', 'large'] as const).map(size => (
+                      <button
+                        key={size}
+                        onClick={() => updateChatSettings({ avatarSize: size })}
+                        className={cn(
+                          "flex-1 py-2 text-xs rounded-xl border transition-all",
+                          chatSettings.avatarSize === size ? "border-gray-900 bg-gray-900 text-white" : "border-gray-200"
+                        )}
+                      >
+                        {size === 'small' ? '小' : size === 'medium' ? '中' : '大'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] text-gray-500 block mb-2">头像框</label>
+                  <div className="w-16 h-16 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center relative overflow-hidden cursor-pointer hover:border-gray-400">
+                    {chatSettings.avatarFrame ? (
+                      <>
+                        <img src={chatSettings.avatarFrame} className="w-full h-full object-cover" alt="frame" />
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); updateChatSettings({ avatarFrame: null }); }}
+                          className="absolute top-0 right-0 p-0.5 bg-black/50 text-white rounded-bl-lg"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </>
+                    ) : (
+                      <Plus className="w-6 h-6 text-gray-400" />
+                    )}
+                    <input 
+                      type="file" 
+                      accept="image/png,image/gif" 
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const compressed = await compressImage(file, 200, 200, 0.9);
+                          updateChatSettings({ avatarFrame: compressed });
+                        }
+                      }}
+                    />
+                  </div>
+                  <p className="text-[8px] text-gray-400 mt-1">建议上传透明背景的 PNG 或 GIF</p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </motion.div>
+      );
+    }
+
+    // Dynamic Styles based on settings
+    const avatarSizeClass = chatSettings.avatarSize === 'small' ? 'w-8 h-8' : chatSettings.avatarSize === 'large' ? 'w-12 h-12' : 'w-10 h-10';
+    const avatarShapeClass = chatSettings.avatarShape === 'circle' ? 'rounded-full' : 'rounded-xl';
+    const bubbleSizeClass = chatSettings.bubbleSize === 'small' ? 'text-xs px-3 py-2' : chatSettings.bubbleSize === 'large' ? 'text-base px-5 py-4' : 'text-sm px-4 py-3';
+
     return (
       <motion.div 
         initial={{ x: '100%' }}
         animate={{ x: 0 }}
         exit={{ x: '100%' }}
         className="absolute inset-0 flex flex-col z-50 overflow-hidden"
+        style={{ backgroundColor: chatSettings.uiThemeColor, color: chatSettings.fontColor }}
       >
-        {/* Background Image with Blur */}
+        {/* Background Image */}
         <div className="absolute inset-0 z-0">
-          <img 
-            src={activeChar.backgroundImage || activeChar.avatar} 
-            className="w-full h-full object-cover" 
-            alt="background" 
-            referrerPolicy="no-referrer"
-          />
-          <div className="absolute inset-0 bg-black/20 backdrop-blur-3xl" />
-          <div className="absolute inset-0 bg-gradient-to-b from-white/40 via-white/10 to-white/40" />
+          {chatSettings.backgroundImage ? (
+            <img 
+              src={chatSettings.backgroundImage} 
+              className="w-full h-full object-cover" 
+              alt="background" 
+            />
+          ) : (
+            <div className="w-full h-full bg-white" />
+          )}
         </div>
 
         {/* Chat Header */}
-        <div className="h-16 px-4 flex items-center justify-between bg-white/40 backdrop-blur-xl border-b border-white/40 shadow-[0_4px_30px_rgba(0,0,0,0.05)] relative z-10">
+        <div 
+          className="h-16 px-4 flex items-center justify-between border-b relative z-10"
+          style={{ 
+            backgroundColor: `${chatSettings.uiThemeColor}e6`, // 90% opacity
+            borderColor: `${chatSettings.fontColor}1a` // 10% opacity
+          }}
+        >
           {apiError && (
             <div className="absolute top-full left-0 right-0 bg-red-500/90 backdrop-blur-md text-white text-[10px] py-1 px-4 text-center z-[60] animate-in slide-in-from-top duration-300 shadow-lg">
               {apiError}
             </div>
           )}
-          <button onClick={() => setSelectedChatId(null)} className="p-2 hover:bg-white/50 rounded-full transition-colors">
-            <ChevronLeft className="w-6 h-6 text-gray-900" />
+          <button onClick={() => setSelectedChatId(null)} className="p-2 hover:bg-black/5 rounded-full transition-colors">
+            <ChevronLeft className="w-6 h-6" style={{ color: chatSettings.fontColor }} />
           </button>
           <div className="flex flex-col items-center">
-            <span className="text-sm font-bold text-gray-900 drop-shadow-sm">{activeChar.name}</span>
-            <span className="text-[10px] text-green-700 font-bold tracking-widest uppercase drop-shadow-sm">Online</span>
+            <span className="text-sm font-bold" style={{ color: chatSettings.fontColor }}>{activeChar.name}</span>
+            <span className="text-[10px] font-bold tracking-widest uppercase opacity-70" style={{ color: chatSettings.fontColor }}>Online</span>
           </div>
-          <button className="p-2 hover:bg-white/50 rounded-full transition-colors">
-            <MoreHorizontal className="w-6 h-6 text-gray-900" />
+          <button onClick={() => setShowSettings(true)} className="p-2 hover:bg-black/5 rounded-full transition-colors">
+            <SettingsIcon className="w-5 h-5" style={{ color: chatSettings.fontColor }} />
           </button>
         </div>
 
@@ -270,36 +531,67 @@ export default function WeChatApp({
                 msg.role === 'user' ? "flex-row-reverse" : "flex-row"
               )}
             >
-              <div className="w-10 h-10 rounded-2xl overflow-hidden bg-white/50 shrink-0 border border-white/60 shadow-[0_8px_16px_rgba(0,0,0,0.1)] backdrop-blur-md p-0.5">
+              {/* Avatar */}
+              <div className={cn("shrink-0 relative", avatarSizeClass, avatarShapeClass, "overflow-hidden bg-gray-100 shadow-sm")}>
                 <img 
                   src={msg.role === 'user' ? (appState.currentUser?.avatar || "https://picsum.photos/seed/user/100/100") : activeChar.avatar} 
-                  className="w-full h-full object-cover rounded-xl" 
+                  className="w-full h-full object-cover" 
                   alt="" 
                   referrerPolicy="no-referrer"
                 />
-              </div>
-              <div 
-                className={cn(
-                  "max-w-[75%] px-4 py-3 rounded-3xl text-sm shadow-[0_8px_32px_rgba(0,0,0,0.1)] backdrop-blur-xl border",
-                  msg.role === 'user' 
-                    ? "bg-gray-900/80 text-white rounded-tr-sm border-gray-700/50" 
-                    : "bg-white/70 text-gray-900 rounded-tl-sm border-white/60"
+                {chatSettings.avatarFrame && (
+                  <img src={chatSettings.avatarFrame} className="absolute inset-0 w-full h-full object-cover z-10 pointer-events-none" />
                 )}
-              >
-                {msg.text}
+              </div>
+              
+              {/* Bubble */}
+              <div className="relative max-w-[75%]">
+                <div 
+                  className={cn(
+                    "rounded-2xl shadow-sm relative z-10",
+                    bubbleSizeClass
+                  )}
+                  style={{
+                    backgroundColor: msg.role === 'user' ? chatSettings.myBubbleColor : chatSettings.otherBubbleColor,
+                    color: chatSettings.fontColor
+                  }}
+                >
+                  {/* Bubble Tail */}
+                  <div 
+                    className="absolute top-1/2 -translate-y-1/2 w-0 h-0 border-y-[6px] border-y-transparent z-0"
+                    style={{
+                      [msg.role === 'user' ? 'right' : 'left']: '-5px',
+                      [msg.role === 'user' ? 'borderLeftWidth' : 'borderRightWidth']: '6px',
+                      [msg.role === 'user' ? 'borderLeftColor' : 'borderRightColor']: msg.role === 'user' ? chatSettings.myBubbleColor : chatSettings.otherBubbleColor,
+                    }}
+                  />
+                  <div className="relative z-10 break-words whitespace-pre-wrap">{msg.text}</div>
+                </div>
               </div>
             </div>
           ))}
           {isTyping && (
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-2xl overflow-hidden bg-white/50 shrink-0 border border-white/60 shadow-[0_8px_16px_rgba(0,0,0,0.1)] backdrop-blur-md p-0.5">
-                <img src={activeChar.avatar} className="w-full h-full object-cover rounded-xl" alt="" referrerPolicy="no-referrer" />
+              <div className={cn("shrink-0 relative", avatarSizeClass, avatarShapeClass, "overflow-hidden bg-gray-100 shadow-sm")}>
+                <img src={activeChar.avatar} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                {chatSettings.avatarFrame && (
+                  <img src={chatSettings.avatarFrame} className="absolute inset-0 w-full h-full object-cover z-10 pointer-events-none" />
+                )}
               </div>
-              <div className="bg-white/70 backdrop-blur-xl px-5 py-4 rounded-3xl rounded-tl-sm border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.1)]">
-                <div className="flex gap-1.5">
-                  <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" />
-                  <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce [animation-delay:0.2s]" />
-                  <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce [animation-delay:0.4s]" />
+              <div className="relative max-w-[75%]">
+                <div 
+                  className={cn("rounded-2xl shadow-sm relative z-10", bubbleSizeClass)}
+                  style={{ backgroundColor: chatSettings.otherBubbleColor }}
+                >
+                  <div 
+                    className="absolute top-1/2 -translate-y-1/2 w-0 h-0 border-y-[6px] border-y-transparent border-r-[6px] left-[-5px] z-0"
+                    style={{ borderRightColor: chatSettings.otherBubbleColor }}
+                  />
+                  <div className="flex gap-1.5 relative z-10 items-center h-full py-1">
+                    <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ backgroundColor: chatSettings.fontColor, opacity: 0.5 }} />
+                    <span className="w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:0.2s]" style={{ backgroundColor: chatSettings.fontColor, opacity: 0.5 }} />
+                    <span className="w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:0.4s]" style={{ backgroundColor: chatSettings.fontColor, opacity: 0.5 }} />
+                  </div>
                 </div>
               </div>
             </div>
@@ -307,33 +599,44 @@ export default function WeChatApp({
         </div>
 
         {/* Chat Input */}
-        <div className="p-4 bg-white/40 backdrop-blur-xl border-t border-white/40 shadow-[0_-4px_30px_rgba(0,0,0,0.05)] flex items-center gap-3 relative z-10">
-          <button className="p-2 text-gray-600 hover:text-gray-900 hover:bg-white/50 rounded-full transition-all">
-            <Mic className="w-6 h-6" />
+        <div 
+          className="p-4 border-t flex items-center gap-3 relative z-10"
+          style={{ 
+            backgroundColor: `${chatSettings.uiThemeColor}e6`,
+            borderColor: `${chatSettings.fontColor}1a`
+          }}
+        >
+          <button className="p-2 hover:bg-black/5 rounded-full transition-all" style={{ color: chatSettings.fontColor }}>
+            <Mic className="w-6 h-6 opacity-70" />
           </button>
-          <div className="flex-1 bg-white/50 backdrop-blur-md border border-white/60 shadow-inner rounded-full px-5 py-2.5 flex items-center">
+          <div 
+            className="flex-1 rounded-full px-5 py-2.5 flex items-center shadow-inner"
+            style={{ backgroundColor: `${chatSettings.fontColor}0d` }} // 5% opacity of font color for input bg
+          >
             <input 
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
               placeholder="发送消息..."
-              className="flex-1 bg-transparent border-none focus:outline-none text-sm text-gray-900 placeholder:text-gray-500"
+              className="flex-1 bg-transparent border-none focus:outline-none text-sm"
+              style={{ color: chatSettings.fontColor }}
             />
-            <button className="p-1.5 text-gray-500 hover:text-gray-900 transition-colors">
-              <Smile className="w-5 h-5" />
+            <button className="p-1.5 transition-colors" style={{ color: chatSettings.fontColor }}>
+              <Smile className="w-5 h-5 opacity-70" />
             </button>
           </div>
           {inputText.trim() ? (
             <button 
               onClick={handleSendMessage}
-              className="w-11 h-11 bg-gray-900/90 backdrop-blur-md text-white border border-gray-700/50 rounded-full flex items-center justify-center shadow-[0_8px_16px_rgba(0,0,0,0.2)] active:scale-90 transition-all"
+              className="w-11 h-11 rounded-full flex items-center justify-center shadow-md active:scale-90 transition-all"
+              style={{ backgroundColor: chatSettings.fontColor, color: chatSettings.uiThemeColor }}
             >
               <Send className="w-5 h-5 ml-1" />
             </button>
           ) : (
-            <button className="p-2 text-gray-600 hover:text-gray-900 hover:bg-white/50 rounded-full transition-all">
-              <Plus className="w-6 h-6" />
+            <button className="p-2 hover:bg-black/5 rounded-full transition-all" style={{ color: chatSettings.fontColor }}>
+              <Plus className="w-6 h-6 opacity-70" />
             </button>
           )}
         </div>
