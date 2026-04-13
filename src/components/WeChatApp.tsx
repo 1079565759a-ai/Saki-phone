@@ -38,10 +38,11 @@ interface WeChatAppProps {
 
 export interface ChatSettings {
   backgroundImage: string | null;
-  bubbleSize: 'small' | 'medium' | 'large';
+  chatBackgroundColor: string;
+  headerFooterColor: string;
+  bubbleFontSize: number;
   myBubbleColor: string;
   otherBubbleColor: string;
-  uiThemeColor: string;
   fontColor: string;
   avatarShape: 'circle' | 'square';
   avatarSize: 'small' | 'medium' | 'large';
@@ -50,10 +51,11 @@ export interface ChatSettings {
 
 const defaultChatSettings: ChatSettings = {
   backgroundImage: null,
-  bubbleSize: 'medium',
+  chatBackgroundColor: '#ffffff',
+  headerFooterColor: '#ffffff',
+  bubbleFontSize: 14,
   myBubbleColor: '#f3f4f6', // Light gray
   otherBubbleColor: '#f9fafb', // Very light gray
-  uiThemeColor: '#ffffff',
   fontColor: '#111827',
   avatarShape: 'square',
   avatarSize: 'medium',
@@ -72,7 +74,7 @@ export default function WeChatApp({
 }: WeChatAppProps) {
   const [currentPage, setCurrentPage] = useState(0); // 0: Chats, 1: Contacts, 2: Discover, 3: Me
   const [selectedChatId, setSelectedChatId] = useState<string | null>(appState.selectedCharId);
-  const [showSettings, setShowSettings] = useState(false);
+  const [chatSubView, setChatSubView] = useState<'none' | 'profile' | 'beautify'>('none');
   const [inputText, setInputText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -84,9 +86,15 @@ export default function WeChatApp({
   const friendRequests = appState.charCharacters.filter((c: any) => c.autoAddUser && !c.isFriendApproved);
   const chatHistory = selectedChatId ? (appState.chatHistories[selectedChatId] || []) : [];
   
-  const chatSettings: ChatSettings = appState.chatSettings || defaultChatSettings;
+  const chatSettingsByChar = appState.chatSettingsByChar || {};
+  const chatSettings: ChatSettings = (selectedChatId ? chatSettingsByChar[selectedChatId] : null) || defaultChatSettings;
+  
   const updateChatSettings = (newSettings: Partial<ChatSettings>) => {
-    updateState('chatSettings', { ...chatSettings, ...newSettings });
+    if (!selectedChatId) return;
+    updateState('chatSettingsByChar', { 
+      ...chatSettingsByChar, 
+      [selectedChatId]: { ...chatSettings, ...newSettings } 
+    });
   };
 
   useEffect(() => {
@@ -249,16 +257,60 @@ export default function WeChatApp({
   }
 
   if (selectedChatId && activeChar) {
-    if (showSettings) {
+    if (chatSubView === 'profile') {
       return (
         <motion.div 
           initial={{ x: '100%' }}
           animate={{ x: 0 }}
           exit={{ x: '100%' }}
-          className="absolute inset-0 bg-white flex flex-col z-[60] overflow-y-auto"
+          className="absolute inset-0 bg-[#F9FAFB] flex flex-col z-[60] overflow-y-auto"
         >
           <div className="h-14 px-4 flex items-center justify-between border-b border-gray-100 sticky top-0 bg-white/80 backdrop-blur-md z-10">
-            <button onClick={() => setShowSettings(false)} className="p-2 hover:bg-gray-50 rounded-full transition-colors">
+            <button onClick={() => setChatSubView('none')} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+              <ChevronLeft className="w-6 h-6 text-gray-900" />
+            </button>
+            <span className="text-sm font-bold text-gray-900">聊天信息</span>
+            <div className="w-10" />
+          </div>
+          
+          <div className="p-6 flex flex-col items-center space-y-6">
+            <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-sm bg-white">
+              <img src={activeChar.avatar} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+            </div>
+            <div className="text-center">
+              <h2 className="text-xl font-bold text-gray-900">{activeChar.name}</h2>
+              <p className="text-xs text-gray-400 mt-1 uppercase tracking-widest">ID: {activeChar.wechatId}</p>
+            </div>
+            
+            <div className="w-full bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-4">
+              <button 
+                onClick={() => setChatSubView('beautify')}
+                className="w-full px-4 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-pink-50 flex items-center justify-center text-pink-500">
+                    <SettingsIcon className="w-4 h-4" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-900">聊天美化</span>
+                </div>
+                <ChevronLeft className="w-4 h-4 text-gray-300 rotate-180" />
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      );
+    }
+
+    if (chatSubView === 'beautify') {
+      return (
+        <motion.div 
+          initial={{ x: '100%' }}
+          animate={{ x: 0 }}
+          exit={{ x: '100%' }}
+          className="absolute inset-0 bg-white flex flex-col z-[70] overflow-y-auto"
+        >
+          <div className="h-14 px-4 flex items-center justify-between border-b border-gray-100 sticky top-0 bg-white/80 backdrop-blur-md z-10">
+            <button onClick={() => setChatSubView('profile')} className="p-2 hover:bg-gray-50 rounded-full transition-colors">
               <ChevronLeft className="w-6 h-6 text-gray-900" />
             </button>
             <span className="text-sm font-bold text-gray-900">聊天美化设置</span>
@@ -339,18 +391,29 @@ export default function WeChatApp({
               <h3 className="text-xs font-bold text-gray-900 uppercase tracking-widest">全局颜色</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-[10px] text-gray-500">界面主色调</label>
+                  <label className="text-[10px] text-gray-500">聊天背景色</label>
                   <div className="flex items-center gap-2">
                     <input 
                       type="color" 
-                      value={chatSettings.uiThemeColor}
-                      onChange={(e) => updateChatSettings({ uiThemeColor: e.target.value })}
+                      value={chatSettings.chatBackgroundColor}
+                      onChange={(e) => updateChatSettings({ chatBackgroundColor: e.target.value })}
                       className="w-8 h-8 rounded cursor-pointer border-0 p-0"
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] text-gray-500">字体颜色</label>
+                  <label className="text-[10px] text-gray-500">顶栏/底栏背景色</label>
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="color" 
+                      value={chatSettings.headerFooterColor}
+                      onChange={(e) => updateChatSettings({ headerFooterColor: e.target.value })}
+                      className="w-8 h-8 rounded cursor-pointer border-0 p-0"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] text-gray-500">全局字体颜色</label>
                   <div className="flex items-center gap-2">
                     <input 
                       type="color" 
@@ -365,23 +428,18 @@ export default function WeChatApp({
 
             {/* Bubble Size */}
             <div className="space-y-4">
-              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-widest">气泡大小</h3>
-              <div className="flex gap-2">
-                {(['small', 'medium', 'large'] as const).map(size => (
-                  <button
-                    key={size}
-                    onClick={() => updateChatSettings({ bubbleSize: size })}
-                    className={cn(
-                      "flex-1 py-2 text-xs rounded-xl border transition-all",
-                      chatSettings.bubbleSize === size 
-                        ? "border-gray-900 bg-gray-900 text-white" 
-                        : "border-gray-200 text-gray-600 hover:border-gray-400"
-                    )}
-                  >
-                    {size === 'small' ? '小' : size === 'medium' ? '中' : '大'}
-                  </button>
-                ))}
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold text-gray-900 uppercase tracking-widest">气泡字体大小 (px)</h3>
+                <span className="text-xs font-mono text-gray-500">{chatSettings.bubbleFontSize}px</span>
               </div>
+              <input 
+                type="range" 
+                min="10" 
+                max="24" 
+                value={chatSettings.bubbleFontSize}
+                onChange={(e) => updateChatSettings({ bubbleFontSize: parseInt(e.target.value) })}
+                className="w-full accent-gray-900"
+              />
             </div>
 
             {/* Avatar Settings */}
@@ -470,7 +528,6 @@ export default function WeChatApp({
     // Dynamic Styles based on settings
     const avatarSizeClass = chatSettings.avatarSize === 'small' ? 'w-8 h-8' : chatSettings.avatarSize === 'large' ? 'w-12 h-12' : 'w-10 h-10';
     const avatarShapeClass = chatSettings.avatarShape === 'circle' ? 'rounded-full' : 'rounded-xl';
-    const bubbleSizeClass = chatSettings.bubbleSize === 'small' ? 'text-xs px-3 py-2' : chatSettings.bubbleSize === 'large' ? 'text-base px-5 py-4' : 'text-sm px-4 py-3';
 
     return (
       <motion.div 
@@ -478,7 +535,7 @@ export default function WeChatApp({
         animate={{ x: 0 }}
         exit={{ x: '100%' }}
         className="absolute inset-0 flex flex-col z-50 overflow-hidden"
-        style={{ backgroundColor: chatSettings.uiThemeColor, color: chatSettings.fontColor }}
+        style={{ backgroundColor: chatSettings.chatBackgroundColor, color: chatSettings.fontColor }}
       >
         {/* Background Image */}
         <div className="absolute inset-0 z-0">
@@ -489,7 +546,7 @@ export default function WeChatApp({
               alt="background" 
             />
           ) : (
-            <div className="w-full h-full bg-white" />
+            <div className="w-full h-full" style={{ backgroundColor: chatSettings.chatBackgroundColor }} />
           )}
         </div>
 
@@ -497,7 +554,7 @@ export default function WeChatApp({
         <div 
           className="h-16 px-4 flex items-center justify-between border-b relative z-10"
           style={{ 
-            backgroundColor: `${chatSettings.uiThemeColor}e6`, // 90% opacity
+            backgroundColor: `${chatSettings.headerFooterColor}e6`, // 90% opacity
             borderColor: `${chatSettings.fontColor}1a` // 10% opacity
           }}
         >
@@ -513,8 +570,8 @@ export default function WeChatApp({
             <span className="text-sm font-bold" style={{ color: chatSettings.fontColor }}>{activeChar.name}</span>
             <span className="text-[10px] font-bold tracking-widest uppercase opacity-70" style={{ color: chatSettings.fontColor }}>Online</span>
           </div>
-          <button onClick={() => setShowSettings(true)} className="p-2 hover:bg-black/5 rounded-full transition-colors">
-            <SettingsIcon className="w-5 h-5" style={{ color: chatSettings.fontColor }} />
+          <button onClick={() => setChatSubView('profile')} className="p-2 hover:bg-black/5 rounded-full transition-colors">
+            <MoreHorizontal className="w-6 h-6" style={{ color: chatSettings.fontColor }} />
           </button>
         </div>
 
@@ -547,13 +604,11 @@ export default function WeChatApp({
               {/* Bubble */}
               <div className="relative max-w-[75%]">
                 <div 
-                  className={cn(
-                    "rounded-2xl shadow-sm relative z-10",
-                    bubbleSizeClass
-                  )}
+                  className="rounded-lg shadow-sm relative z-10 px-3 py-1.5"
                   style={{
                     backgroundColor: msg.role === 'user' ? chatSettings.myBubbleColor : chatSettings.otherBubbleColor,
-                    color: chatSettings.fontColor
+                    color: chatSettings.fontColor,
+                    fontSize: `${chatSettings.bubbleFontSize}px`
                   }}
                 >
                   {/* Bubble Tail */}
@@ -565,7 +620,7 @@ export default function WeChatApp({
                       [msg.role === 'user' ? 'borderLeftColor' : 'borderRightColor']: msg.role === 'user' ? chatSettings.myBubbleColor : chatSettings.otherBubbleColor,
                     }}
                   />
-                  <div className="relative z-10 break-words whitespace-pre-wrap">{msg.text}</div>
+                  <div className="relative z-10 break-words whitespace-pre-wrap leading-relaxed">{msg.text}</div>
                 </div>
               </div>
             </div>
@@ -580,7 +635,7 @@ export default function WeChatApp({
               </div>
               <div className="relative max-w-[75%]">
                 <div 
-                  className={cn("rounded-2xl shadow-sm relative z-10", bubbleSizeClass)}
+                  className="rounded-lg shadow-sm relative z-10 px-3 py-1.5"
                   style={{ backgroundColor: chatSettings.otherBubbleColor }}
                 >
                   <div 
@@ -602,7 +657,7 @@ export default function WeChatApp({
         <div 
           className="p-4 border-t flex items-center gap-3 relative z-10"
           style={{ 
-            backgroundColor: `${chatSettings.uiThemeColor}e6`,
+            backgroundColor: `${chatSettings.headerFooterColor}e6`,
             borderColor: `${chatSettings.fontColor}1a`
           }}
         >
@@ -630,7 +685,7 @@ export default function WeChatApp({
             <button 
               onClick={handleSendMessage}
               className="w-11 h-11 rounded-full flex items-center justify-center shadow-md active:scale-90 transition-all"
-              style={{ backgroundColor: chatSettings.fontColor, color: chatSettings.uiThemeColor }}
+              style={{ backgroundColor: chatSettings.fontColor, color: chatSettings.headerFooterColor }}
             >
               <Send className="w-5 h-5 ml-1" />
             </button>
