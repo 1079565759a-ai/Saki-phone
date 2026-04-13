@@ -87,7 +87,19 @@ export default function WeChatApp({
   const chatHistory = selectedChatId ? (appState.chatHistories[selectedChatId] || []) : [];
   
   const chatSettingsByChar = appState.chatSettingsByChar || {};
-  const chatSettings: ChatSettings = (selectedChatId ? chatSettingsByChar[selectedChatId] : null) || defaultChatSettings;
+  const savedSettings = selectedChatId ? chatSettingsByChar[selectedChatId] : null;
+  const chatSettings: ChatSettings = {
+    backgroundImage: savedSettings?.backgroundImage ?? defaultChatSettings.backgroundImage,
+    chatBackgroundColor: savedSettings?.chatBackgroundColor ?? defaultChatSettings.chatBackgroundColor,
+    headerFooterColor: savedSettings?.headerFooterColor ?? defaultChatSettings.headerFooterColor,
+    bubbleFontSize: savedSettings?.bubbleFontSize ?? defaultChatSettings.bubbleFontSize,
+    myBubbleColor: savedSettings?.myBubbleColor ?? defaultChatSettings.myBubbleColor,
+    otherBubbleColor: savedSettings?.otherBubbleColor ?? defaultChatSettings.otherBubbleColor,
+    fontColor: savedSettings?.fontColor ?? defaultChatSettings.fontColor,
+    avatarShape: savedSettings?.avatarShape ?? defaultChatSettings.avatarShape,
+    avatarSize: savedSettings?.avatarSize ?? defaultChatSettings.avatarSize,
+    avatarFrame: savedSettings?.avatarFrame ?? defaultChatSettings.avatarFrame,
+  };
   
   const updateChatSettings = (newSettings: Partial<ChatSettings>) => {
     if (!selectedChatId) return;
@@ -436,8 +448,16 @@ export default function WeChatApp({
                     onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        const compressed = await compressImage(file, 1080, 1920, 0.7);
-                        updateChatSettings({ backgroundImage: compressed });
+                        try {
+                          const compressed = await compressImage(file, 1080, 1920, 0.7);
+                          updateChatSettings({ backgroundImage: compressed });
+                        } catch (err) {
+                          console.error("Failed to compress background image:", err);
+                          // Fallback to raw data URL if compression fails
+                          const reader = new FileReader();
+                          reader.onload = (ev) => updateChatSettings({ backgroundImage: ev.target?.result as string });
+                          reader.readAsDataURL(file);
+                        }
                       }
                     }}
                   />
@@ -599,8 +619,15 @@ export default function WeChatApp({
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (file) {
-                          const compressed = await compressImage(file, 200, 200, 0.9);
-                          updateChatSettings({ avatarFrame: compressed });
+                          try {
+                            const compressed = await compressImage(file, 200, 200, 0.9);
+                            updateChatSettings({ avatarFrame: compressed });
+                          } catch (err) {
+                            console.error("Failed to compress avatar frame:", err);
+                            const reader = new FileReader();
+                            reader.onload = (ev) => updateChatSettings({ avatarFrame: ev.target?.result as string });
+                            reader.readAsDataURL(file);
+                          }
                         }
                       }}
                     />
