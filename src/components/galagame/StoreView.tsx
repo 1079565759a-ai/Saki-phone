@@ -5,9 +5,11 @@ import { cn } from '../../utils/cn';
 
 interface StoreViewProps {
   onClose: () => void;
+  appState: any;
+  updateState: (key: string, value: any) => void;
 }
 
-const StoreView: React.FC<StoreViewProps> = ({ onClose }) => {
+const StoreView: React.FC<StoreViewProps> = ({ onClose, appState, updateState }) => {
   const coinPacks = [
     { id: 1, amount: 5, price: 1, bonus: 0 },
     { id: 2, amount: 30, price: 6, bonus: 5 },
@@ -20,6 +22,14 @@ const StoreView: React.FC<StoreViewProps> = ({ onClose }) => {
     { id: 2, amount: 60, price: 6, bonus: 10 },
     { id: 3, amount: 300, price: 30, bonus: 60 },
   ];
+
+  const handlePurchase = (type: 'coins' | 'sakura', amount: number, bonus: number) => {
+    if (type === 'coins') {
+      updateState('galaCoins', (appState.galaCoins || 0) + amount + bonus);
+    } else {
+      updateState('galaSakura', (appState.galaSakura || 0) + amount + bonus);
+    }
+  };
 
   return (
     <motion.div 
@@ -47,14 +57,14 @@ const StoreView: React.FC<StoreViewProps> = ({ onClose }) => {
           <div className="p-8 border-r border-b border-gray-100 flex flex-col items-center gap-4 group cursor-pointer hover:bg-gray-50 transition-all">
             <Coins className="w-6 h-6 text-yellow-500" strokeWidth={1} />
             <div className="text-center">
-              <p className="text-[14px] font-mono font-bold text-gray-900">1,250</p>
+              <p className="text-[14px] font-mono font-bold text-gray-900">{appState.galaCoins || 0}</p>
               <p className="text-[7px] text-gray-400 font-bold uppercase tracking-[0.2em] mt-1">Gold Coins</p>
             </div>
           </div>
           <div className="p-8 border-r border-b border-gray-100 flex flex-col items-center gap-4 group cursor-pointer hover:bg-gray-50 transition-all">
             <Flower2 className="w-6 h-6 text-pink-400" strokeWidth={1} />
             <div className="text-center">
-              <p className="text-[14px] font-mono font-bold text-gray-900">450</p>
+              <p className="text-[14px] font-mono font-bold text-gray-900">{appState.galaSakura || 0}</p>
               <p className="text-[7px] text-gray-400 font-bold uppercase tracking-[0.2em] mt-1">Sakura</p>
             </div>
           </div>
@@ -68,7 +78,11 @@ const StoreView: React.FC<StoreViewProps> = ({ onClose }) => {
           </div>
           <div className="grid grid-cols-2 gap-4">
             {coinPacks.map(pack => (
-              <button key={pack.id} className="p-6 bg-white border border-gray-100 hover:border-gray-900 transition-all flex flex-col items-center gap-4 group relative overflow-hidden">
+              <button 
+                key={pack.id} 
+                onClick={() => handlePurchase('coins', pack.amount, pack.bonus)}
+                className="p-6 bg-white border border-gray-100 hover:border-gray-900 transition-all flex flex-col items-center gap-4 group relative overflow-hidden"
+              >
                 {pack.bonus > 0 && (
                   <div className="absolute top-0 right-0 bg-gray-900 text-white text-[6px] font-bold px-2 py-0.5 uppercase tracking-tighter">+{pack.bonus} Bonus</div>
                 )}
@@ -90,7 +104,11 @@ const StoreView: React.FC<StoreViewProps> = ({ onClose }) => {
           </div>
           <div className="grid grid-cols-2 gap-4">
             {sakuraPacks.map(pack => (
-              <button key={pack.id} className="p-6 bg-white border border-gray-100 hover:border-gray-900 transition-all flex flex-col items-center gap-4 group relative overflow-hidden">
+              <button 
+                key={pack.id} 
+                onClick={() => handlePurchase('sakura', pack.amount, pack.bonus)}
+                className="p-6 bg-white border border-gray-100 hover:border-gray-900 transition-all flex flex-col items-center gap-4 group relative overflow-hidden"
+              >
                 {pack.bonus > 0 && (
                   <div className="absolute top-0 right-0 bg-gray-900 text-white text-[6px] font-bold px-2 py-0.5 uppercase tracking-tighter">+{pack.bonus} Bonus</div>
                 )}

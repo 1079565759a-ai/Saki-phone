@@ -7,9 +7,11 @@ import { cn } from '../../utils/cn';
 interface WorldviewGeneratorProps {
   onClose: () => void;
   onSave: (worldview: any) => void;
+  appState: any;
+  updateState: (key: string, value: any) => void;
 }
 
-const WorldviewGenerator: React.FC<WorldviewGeneratorProps> = ({ onClose, onSave }) => {
+const WorldviewGenerator: React.FC<WorldviewGeneratorProps> = ({ onClose, onSave, appState, updateState }) => {
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<any>(null);
@@ -20,9 +22,17 @@ const WorldviewGenerator: React.FC<WorldviewGeneratorProps> = ({ onClose, onSave
 
     setIsGenerating(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+      const apiKey = localStorage.getItem('custom_api_key') || process.env.GEMINI_API_KEY || '';
+      const baseUrl = localStorage.getItem('custom_api_url');
+      const model = localStorage.getItem('custom_api_model') || 'gemini-3-flash-preview';
+
+      const ai = new GoogleGenAI({ 
+        apiKey: apiKey,
+        ...(baseUrl ? { baseUrl } : {})
+      });
+      
       const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: model,
         contents: `基于以下描述生成一个Galagame世界观：${prompt}。
         请返回JSON格式，包含以下字段：
         - background: 世界背景 (100-200字)

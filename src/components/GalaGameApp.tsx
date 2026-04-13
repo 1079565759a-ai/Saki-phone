@@ -29,19 +29,22 @@ interface GalaGameAppProps {
   onClose: () => void;
   language?: string;
   isFullscreen?: boolean;
+  appState: any;
+  updateState: (key: string, value: any) => void;
 }
 
 type Tab = 'home' | 'records' | 'community' | 'profile' | 'my-works';
 
-const GalaGameApp: React.FC<GalaGameAppProps> = ({ onClose, language = 'zh', isFullscreen }) => {
+const GalaGameApp: React.FC<GalaGameAppProps> = ({ onClose, language = 'zh', isFullscreen, appState, updateState }) => {
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [selectedGame, setSelectedGame] = useState<any>(null);
   const [showStore, setShowStore] = useState(false);
   const [showWorldview, setShowWorldview] = useState(false);
   const [showCreationFlow, setShowCreationFlow] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [worldviews, setWorldviews] = useState<any[]>([]);
   const [toast, setToast] = useState<string | null>(null);
+
+  const worldviews = appState.galaWorldviews || [];
 
   const showToast = (message: string) => {
     setToast(message);
@@ -56,21 +59,25 @@ const GalaGameApp: React.FC<GalaGameAppProps> = ({ onClose, language = 'zh', isF
             onSelectGame={setSelectedGame} 
             onOpenStore={() => setShowStore(true)}
             onImportGame={() => showToast('Import feature coming soon...')}
+            appState={appState}
+            updateState={updateState}
           />
         );
       case 'records':
-        return <RecordsView onSelectGame={setSelectedGame} />;
+        return <RecordsView onSelectGame={setSelectedGame} appState={appState} updateState={updateState} />;
       case 'community':
-        return <CommunityView />;
+        return <CommunityView appState={appState} updateState={updateState} />;
       case 'profile':
         return (
           <ProfileView 
             onOpenWorldview={() => setShowWorldview(true)} 
             onOpenSettings={() => setShowSettings(true)}
+            appState={appState}
+            updateState={updateState}
           />
         );
       case 'my-works':
-        return <MyWorksView onOpenCreationFlow={() => setShowCreationFlow(true)} />;
+        return <MyWorksView onOpenCreationFlow={() => setShowCreationFlow(true)} appState={appState} updateState={updateState} />;
       default:
         return null;
     }
@@ -117,19 +124,27 @@ const GalaGameApp: React.FC<GalaGameAppProps> = ({ onClose, language = 'zh', isF
           <GameDetailView 
             game={selectedGame} 
             onClose={() => setSelectedGame(null)} 
+            appState={appState}
+            updateState={updateState}
           />
         )}
         {showStore && (
-          <StoreView onClose={() => setShowStore(null)} />
+          <StoreView 
+            onClose={() => setShowStore(false)} 
+            appState={appState}
+            updateState={updateState}
+          />
         )}
         {showWorldview && (
           <WorldviewGenerator 
             onClose={() => setShowWorldview(false)} 
             onSave={(wv) => {
-              setWorldviews(prev => [...prev, wv]);
+              updateState('galaWorldviews', [...worldviews, wv]);
               setShowWorldview(false);
               showToast('世界观保存成功');
             }}
+            appState={appState}
+            updateState={updateState}
           />
         )}
         {showCreationFlow && (
@@ -140,10 +155,16 @@ const GalaGameApp: React.FC<GalaGameAppProps> = ({ onClose, language = 'zh', isF
               setShowCreationFlow(false);
               showToast('作品发布成功');
             }}
+            appState={appState}
+            updateState={updateState}
           />
         )}
         {showSettings && (
-          <SettingsView onClose={() => setShowSettings(false)} />
+          <SettingsView 
+            onClose={() => setShowSettings(false)} 
+            appState={appState}
+            updateState={updateState}
+          />
         )}
       </AnimatePresence>
 

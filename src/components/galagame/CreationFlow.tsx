@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ArrowLeft, 
@@ -9,18 +9,23 @@ import {
   User, 
   Globe, 
   Sparkles,
-  ChevronDown
+  ChevronDown,
+  Camera
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
+import { compressImage } from '../../utils/image';
 
 interface CreationFlowProps {
   onClose: () => void;
   onPublish: (work: any) => void;
   worldviews: any[];
+  appState: any;
+  updateState: (key: string, value: any) => void;
 }
 
-const CreationFlow: React.FC<CreationFlowProps> = ({ onClose, onPublish, worldviews }) => {
+const CreationFlow: React.FC<CreationFlowProps> = ({ onClose, onPublish, worldviews, appState, updateState }) => {
   const [step, setStep] = useState(1);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     title: '',
     intro: '',
@@ -33,6 +38,37 @@ const CreationFlow: React.FC<CreationFlowProps> = ({ onClose, onPublish, worldvi
     otherProtagonists: [] as string[],
   });
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const compressedDataUrl = await compressImage(file);
+      setFormData(prev => ({ ...prev, cover: compressedDataUrl }));
+    } catch (error) {
+      console.error("Failed to process image", error);
+    } finally {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handlePublish = () => {
+    const newWork = {
+      id: Date.now(),
+      title: formData.title || 'Untitled',
+      author: appState.currentUser?.nickname || '我',
+      tags: formData.tags.length > 0 ? formData.tags : ['新作品'],
+      cover: formData.cover,
+      plays: 0,
+      likes: 0
+    };
+    
+    updateState('galaMyGames', [newWork, ...(appState.galaMyGames || [])]);
+    onPublish(newWork);
+  };
+
   const nextStep = () => setStep(prev => prev + 1);
   const prevStep = () => setStep(prev => prev - 1);
 
@@ -41,6 +77,13 @@ const CreationFlow: React.FC<CreationFlowProps> = ({ onClose, onPublish, worldvi
       case 1:
         return (
           <div className="space-y-12 pb-24">
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handleImageUpload} 
+              accept="image/*" 
+              className="hidden" 
+            />
             <div className="space-y-4">
               <h3 className="text-[9px] font-bold uppercase tracking-[0.3em] text-gray-300">Step 01 / Basic Info</h3>
               <p className="text-[8px] text-gray-400 font-bold uppercase tracking-[0.2em] leading-relaxed">
@@ -49,7 +92,10 @@ const CreationFlow: React.FC<CreationFlowProps> = ({ onClose, onPublish, worldvi
             </div>
 
             <div className="space-y-8">
-              <div className="aspect-[16/9] relative bg-gray-50 border border-gray-100 group cursor-pointer overflow-hidden">
+              <div 
+                className="aspect-[16/9] relative bg-gray-50 border border-gray-100 group cursor-pointer overflow-hidden"
+                onClick={() => fileInputRef.current?.click()}
+              >
                 <img src={formData.cover} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" />
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/60 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity">
                   <ImageIcon className="w-6 h-6 text-gray-900" strokeWidth={1} />

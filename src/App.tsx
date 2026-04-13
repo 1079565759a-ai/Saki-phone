@@ -66,7 +66,9 @@ import {
   Sparkles,
   Timer,
   BookOpen,
-  Moon
+  Moon,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { motion, AnimatePresence, Reorder } from 'motion/react';
 import { format } from 'date-fns';
@@ -974,9 +976,9 @@ export default function App() {
         volume: 80,
         progress: 35
       },
-      apiBaseUrl: "https://api.gemai.cc",
+      apiBaseUrl: "",
       apiKey: "",
-      selectedModel: "gpt-3.5-turbo",
+      selectedModel: "",
       availableModels: [] as string[],
       modelFilter: "",
       temperature: 0.7,
@@ -998,6 +1000,43 @@ export default function App() {
       autoLogin: true,
       registeredUser: null as { nickname: string; password: string; avatar: string | null } | null,
       currentUser: null as { nickname: string; password: string; avatar: string | null } | null,
+      galaBanners: [
+        { id: 1, cover: 'https://picsum.photos/seed/banner1/1280/720' },
+        { id: 2, cover: 'https://picsum.photos/seed/banner2/1280/720' },
+        { id: 3, cover: 'https://picsum.photos/seed/banner3/1280/720' },
+      ],
+      galaHotGames: [
+        { id: 1, title: '月下孤影', author: '作者A', tags: ['武侠', '古风'], rating: 4.8, cover: 'https://picsum.photos/seed/hot1/1280/720' },
+        { id: 2, title: '赛博霓虹', author: '作者B', tags: ['科幻', '赛博'], rating: 4.5, cover: 'https://picsum.photos/seed/hot2/1280/720' },
+        { id: 3, title: '深宫计', author: '作者C', tags: ['宫斗', '古风'], rating: 4.9, cover: 'https://picsum.photos/seed/hot3/1280/720' },
+        { id: 4, title: '末日余生', author: '作者D', tags: ['生存', '末世'], rating: 4.2, cover: 'https://picsum.photos/seed/hot4/1280/720' },
+        { id: 5, title: '星际迷航', author: '作者E', tags: ['星际', '科幻'], rating: 4.7, cover: 'https://picsum.photos/seed/hot5/1280/720' },
+      ],
+      galaMyGames: [
+        { id: 101, title: '我的初恋', author: '我', tags: ['校园', '纯爱'], cover: 'https://picsum.photos/seed/my1/1280/720' },
+        { id: 102, title: '重生之我是大佬', author: '我', tags: ['重生', '爽文'], cover: 'https://picsum.photos/seed/my2/1280/720' },
+      ],
+      galaCharacters: [
+        { id: 1, name: '沈星移', popularity: 12500, photo: 'https://picsum.photos/seed/char1/300/400' },
+        { id: 2, name: '陆昭', popularity: 9800, photo: 'https://picsum.photos/seed/char2/300/400' },
+        { id: 3, name: '顾廷烨', popularity: 8600, photo: 'https://picsum.photos/seed/char3/300/400' },
+        { id: 4, name: '齐衡', popularity: 7200, photo: 'https://picsum.photos/seed/char4/300/400' },
+      ],
+      galaPosts: [
+        { id: 1, title: '《月下孤影》全结局攻略分享！', author: '攻略组-小明', likes: 1250, comments: 88, time: '2小时前', tags: ['攻略', '月下孤影'] },
+        { id: 2, title: '大家觉得新出的那个病娇角色怎么样？', author: '路人甲', likes: 450, comments: 230, time: '5小时前', tags: ['讨论', '角色安利'] },
+        { id: 3, title: '求推荐一些重口味的恐怖Gal！', author: '恐怖爱好者', likes: 89, comments: 45, time: '昨天', tags: ['求助', '恐怖'] },
+        { id: 4, title: '【安利】这个星际背景的世界观绝了', author: '世界观架构师', likes: 2100, comments: 156, time: '3天前', tags: ['安利', '星际'] },
+      ],
+      galaCoins: 1250,
+      galaSakura: 450,
+      galaSignature: '在文字的世界里寻找永恒的瞬间。',
+      galaWorldviews: [] as any[],
+      galaRecords: [
+        { id: 1, title: '月下孤影', lastPlayed: '2小时前', progress: '45%', cover: 'https://picsum.photos/seed/hot1/1280/720' },
+        { id: 3, title: '深宫计', lastPlayed: '昨天', progress: '80%', cover: 'https://picsum.photos/seed/hot3/1280/720' },
+        { id: 101, title: '我的初恋', lastPlayed: '3天前', progress: '10%', cover: 'https://picsum.photos/seed/my1/1280/720' },
+      ],
       appLabels: {
         heartlink: "HEARTLINK",
         chat: "CHAT",
@@ -1347,11 +1386,73 @@ export default function App() {
 
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [testMessage, setTestMessage] = useState('');
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [isFetchingModels, setIsFetchingModels] = useState(false);
+  const [showApiKey, setShowApiKey] = useState(false);
+
+  const fetchModels = async () => {
+    if (!appState.apiBaseUrl || !appState.apiKey) {
+      setTestStatus('error');
+      setTestMessage('请先输入 API 地址和密钥');
+      return;
+    }
+    
+    setIsFetchingModels(true);
+    setTestStatus('testing');
+    setTestMessage('正在拉取模型列表...');
+    
+    try {
+      const baseUrl = appState.apiBaseUrl.replace(/\/$/, '');
+      const endpoints = [`${baseUrl}/models`, `${baseUrl}/v1/models`, `${baseUrl}/v1beta/models`];
+      
+      let success = false;
+      for (const endpoint of endpoints) {
+        try {
+          const response = await fetch(endpoint, {
+            headers: { 'Authorization': `Bearer ${appState.apiKey}` }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            const models = data.data?.map((m: any) => m.id) || [];
+            if (models.length > 0) {
+              setAvailableModels(models);
+              if (!models.includes(appState.selectedModel)) {
+                updateState('selectedModel', models[0]);
+              }
+              setTestStatus('success');
+              setTestMessage(`成功加载 ${models.length} 个模型`);
+              success = true;
+              break;
+            }
+          }
+        } catch (e) {
+          // Continue to next endpoint
+        }
+      }
+      
+      if (!success) {
+        setTestStatus('error');
+        setTestMessage('无法获取模型列表，请检查地址或密钥');
+      }
+    } catch (err: any) {
+      setTestStatus('error');
+      setTestMessage(`请求失败: ${err.message}`);
+    } finally {
+      setIsFetchingModels(false);
+      setTimeout(() => setTestStatus('idle'), 3000);
+    }
+  };
 
   const handleTestConnection = async () => {
     if (!appState.apiBaseUrl || !appState.apiKey) {
       setTestStatus('error');
       setTestMessage('请先输入 API 地址和密钥');
+      return;
+    }
+    if (!appState.selectedModel) {
+      setTestStatus('error');
+      setTestMessage('请先拉取并选择模型');
       return;
     }
     setTestStatus('testing');
@@ -1981,6 +2082,8 @@ NSFW设定(18+)：${selectedChar.nsfw}
                 onClose={() => setIsGalaGameOpen(false)} 
                 language={appState.language} 
                 isFullscreen={effectiveFullscreen}
+                appState={appState}
+                updateState={updateState}
               />
             </motion.div>
           ) : isRadioOpen ? (
@@ -2294,46 +2397,53 @@ NSFW设定(18+)：${selectedChar.nsfw}
                             value={appState.apiBaseUrl}
                             onChange={e => updateState('apiBaseUrl', e.target.value)}
                             className="w-full bg-gray-50 border border-gray-100 p-3 text-xs outline-none focus:border-gray-900/30 transition-colors font-mono"
-                            placeholder="https://api.openai.com/v1"
+                            placeholder="https://api.example.com/v1"
                           />
-                          <p className="mt-2 text-[9px] text-gray-400">支持哈基米、织云、DeepSeek 等国内平台接口</p>
                         </div>
 
                         <div className="bg-white border border-gray-100 p-5">
                           <label className="block text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-widest">API Key</label>
-                          <input 
-                            type="password" 
-                            value={appState.apiKey}
-                            onChange={e => updateState('apiKey', e.target.value)}
-                            className="w-full bg-gray-50 border border-gray-100 p-3 text-xs outline-none focus:border-gray-900/30 transition-colors font-mono"
-                            placeholder="sk-..."
-                          />
+                          <div className="relative">
+                            <input 
+                              type={showApiKey ? "text" : "password"} 
+                              value={appState.apiKey}
+                              onChange={e => updateState('apiKey', e.target.value)}
+                              className="w-full bg-gray-50 border border-gray-100 p-3 pr-10 text-xs outline-none focus:border-gray-900/30 transition-colors font-mono"
+                              placeholder="sk-..."
+                            />
+                            <button 
+                              onClick={() => setShowApiKey(!showApiKey)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            >
+                              {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
                         </div>
 
-                        <div className="bg-white border border-gray-100 p-5">
-                          <label className="block text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-widest">模型选择</label>
+                        <div className="bg-white border border-gray-100 p-5 relative">
+                          <div className="flex items-center justify-between mb-2">
+                            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">模型选择</label>
+                            <button 
+                              onClick={fetchModels}
+                              disabled={isFetchingModels}
+                              className="text-[10px] text-blue-500 hover:text-blue-600 font-bold flex items-center gap-1 disabled:opacity-50"
+                            >
+                              <RefreshCw className={cn("w-3 h-3", isFetchingModels && "animate-spin")} />
+                              重新拉取模型
+                            </button>
+                          </div>
                           <select 
                             value={appState.selectedModel}
                             onChange={e => updateState('selectedModel', e.target.value)}
                             className="w-full bg-gray-50 border border-gray-100 p-3 text-xs outline-none focus:border-gray-900/30 transition-colors appearance-none"
                           >
-                            <optgroup label="常用模型">
-                              <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                              <option value="gpt-4">GPT-4</option>
-                              <option value="gpt-4-turbo">GPT-4 Turbo</option>
-                            </optgroup>
-                            <optgroup label="国内平台常用">
-                              <option value="deepseek-chat">DeepSeek Chat</option>
-                              <option value="deepseek-coder">DeepSeek Coder</option>
-                              <option value="qwen-turbo">通义千问 Turbo</option>
-                              <option value="qwen-max">通义千问 Max</option>
-                              <option value="ernie-bot-4">文心一言 4.0</option>
-                            </optgroup>
-                            <optgroup label="其他">
-                              <option value="claude-3-opus-20240229">Claude 3 Opus</option>
-                              <option value="claude-3-sonnet-20240229">Claude 3 Sonnet</option>
-                              <option value="claude-3-haiku-20240307">Claude 3 Haiku</option>
-                            </optgroup>
+                            {availableModels.length > 0 ? (
+                              availableModels.map(model => (
+                                <option key={model} value={model}>{model}</option>
+                              ))
+                            ) : (
+                              <option value="" disabled>点击“重新拉取模型”加载</option>
+                            )}
                           </select>
                         </div>
 

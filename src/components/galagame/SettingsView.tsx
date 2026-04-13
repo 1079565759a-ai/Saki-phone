@@ -15,11 +15,12 @@ import { cn } from '../../utils/cn';
 
 interface SettingsViewProps {
   onClose: () => void;
+  appState: any;
+  updateState: (key: string, value: any) => void;
 }
 
-const SettingsView: React.FC<SettingsViewProps> = ({ onClose }) => {
+const SettingsView: React.FC<SettingsViewProps> = ({ onClose, appState, updateState }) => {
   const [activeSection, setActiveSection] = useState<'main' | 'interface'>('main');
-  const [isSmallPhoneMode, setIsSmallPhoneMode] = useState(false);
 
   const mainSettings = [
     { id: 'interface', icon: Monitor, label: '界面设置', desc: 'Interface & Display' },
@@ -98,17 +99,17 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onClose }) => {
                     </div>
                   </div>
                   <button 
-                    onClick={() => setIsSmallPhoneMode(!isSmallPhoneMode)}
+                    onClick={() => updateState('isFullscreen', !appState.isFullscreen)}
                     className={cn(
                       "w-12 h-6 border transition-all relative flex items-center px-1",
-                      isSmallPhoneMode ? "bg-gray-900 border-gray-900" : "bg-white border-gray-200"
+                      appState.isFullscreen ? "bg-gray-900 border-gray-900" : "bg-white border-gray-200"
                     )}
                   >
                     <motion.div 
-                      animate={{ x: isSmallPhoneMode ? 24 : 0 }}
+                      animate={{ x: appState.isFullscreen ? 24 : 0 }}
                       className={cn(
                         "w-4 h-4",
-                        isSmallPhoneMode ? "bg-white" : "bg-gray-200"
+                        appState.isFullscreen ? "bg-white" : "bg-gray-200"
                       )}
                     />
                   </button>

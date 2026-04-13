@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion } from 'motion/react';
 import { 
   Settings, 
@@ -10,22 +10,30 @@ import {
   Users, 
   Mail, 
   Inbox,
-  Sparkles
+  Sparkles,
+  Camera
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
+import { compressImage } from '../../utils/image';
 
 interface ProfileViewProps {
   onOpenWorldview: () => void;
   onOpenSettings: () => void;
+  appState: any;
+  updateState: (key: string, value: any) => void;
 }
 
-const ProfileView: React.FC<ProfileViewProps> = ({ onOpenWorldview, onOpenSettings }) => {
+const ProfileView: React.FC<ProfileViewProps> = ({ onOpenWorldview, onOpenSettings, appState, updateState }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [profile, setProfile] = useState({
-    name: '芙糕',
-    signature: '在文字的世界里寻找永恒的瞬间。',
-    avatar: 'https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAERgJFpq-WeW_-xUHBIWvNPyriVIFcZGAACpx4AAlIUYFXjvsH9dX3zKzoE.jpeg'
-  });
+  const [editName, setEditName] = useState(appState.currentUser?.nickname || '芙糕');
+  const [editSignature, setEditSignature] = useState(appState.galaSignature || '在文字的世界里寻找永恒的瞬间。');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const profile = {
+    name: appState.currentUser?.nickname || '芙糕',
+    signature: appState.galaSignature || '在文字的世界里寻找永恒的瞬间。',
+    avatar: appState.currentUser?.avatar || 'https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAERgJFpq-WeW_-xUHBIWvNPyriVIFcZGAACpx4AAlIUYFXjvsH9dX3zKzoE.jpeg'
+  };
 
   const stats = [
     { label: 'Followers', value: '856', icon: Users },
@@ -33,15 +41,50 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onOpenWorldview, onOpenSettin
     { label: 'Comments', value: '156', icon: MessageSquare },
   ];
 
+  const handleSaveProfile = () => {
+    updateState('currentUser', { ...appState.currentUser, nickname: editName });
+    updateState('galaSignature', editSignature);
+    setIsEditing(false);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const compressedDataUrl = await compressImage(file);
+      updateState('currentUser', { ...appState.currentUser, avatar: compressedDataUrl });
+    } catch (error) {
+      console.error("Failed to process image", error);
+    } finally {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   return (
     <div className="flex-1 overflow-y-auto px-8 py-12 pb-24 space-y-16">
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        onChange={handleImageUpload} 
+        accept="image/*" 
+        className="hidden" 
+      />
       {/* Profile Header */}
       <div className="flex flex-col items-center space-y-8">
         <div className="w-32 h-32 rounded-none border border-gray-100 p-2 bg-white relative group">
           <div className="absolute -top-2 -right-2 w-6 h-6 border-t-2 border-r-2 border-gray-900" />
           <div className="absolute inset-0 bg-gray-900 translate-x-1 translate-y-1 -z-10 opacity-5 group-hover:opacity-10 transition-opacity" />
-          <div className="w-full h-full rounded-none bg-gray-50 overflow-hidden border border-gray-100">
+          <div className="w-full h-full rounded-none bg-gray-50 overflow-hidden border border-gray-100 relative">
             <img src={profile.avatar} className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-1000" referrerPolicy="no-referrer" />
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20"
+            >
+              <Camera className="w-6 h-6 text-white" />
+            </button>
           </div>
           <button 
             onClick={() => setIsEditing(true)}
@@ -51,16 +94,37 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onOpenWorldview, onOpenSettin
           </button>
         </div>
 
-        <div className="text-center space-y-4">
-          <h2 className="text-[16px] font-serif italic font-bold uppercase tracking-[0.4em] text-gray-900">{profile.name}</h2>
-          <p className="text-[9px] text-gray-400 font-bold uppercase tracking-[0.25em] leading-relaxed max-w-[240px] opacity-60">
-            {profile.signature}
-          </p>
-          <div className="flex items-center justify-center gap-2">
-            <div className="w-1.5 h-1.5 bg-green-400 rounded-full" />
-            <p className="text-[8px] text-gray-300 font-mono font-bold uppercase tracking-[0.2em]">User.ID: 26039482</p>
+        {isEditing ? (
+          <div className="w-full max-w-xs space-y-4">
+            <input 
+              type="text" 
+              value={editName} 
+              onChange={e => setEditName(e.target.value)}
+              className="w-full text-center text-[16px] font-serif italic font-bold uppercase tracking-[0.4em] text-gray-900 border-b border-gray-900 focus:outline-none pb-2"
+            />
+            <input 
+              type="text" 
+              value={editSignature} 
+              onChange={e => setEditSignature(e.target.value)}
+              className="w-full text-center text-[9px] text-gray-400 font-bold uppercase tracking-[0.25em] border-b border-gray-300 focus:outline-none pb-2"
+            />
+            <div className="flex justify-center gap-4 pt-4">
+              <button onClick={() => setIsEditing(false)} className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Cancel</button>
+              <button onClick={handleSaveProfile} className="text-[9px] font-bold uppercase tracking-widest text-gray-900">Save</button>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="text-center space-y-4">
+            <h2 className="text-[16px] font-serif italic font-bold uppercase tracking-[0.4em] text-gray-900">{profile.name}</h2>
+            <p className="text-[9px] text-gray-400 font-bold uppercase tracking-[0.25em] leading-relaxed max-w-[240px] opacity-60">
+              {profile.signature}
+            </p>
+            <div className="flex items-center justify-center gap-2">
+              <div className="w-1.5 h-1.5 bg-green-400 rounded-full" />
+              <p className="text-[8px] text-gray-300 font-mono font-bold uppercase tracking-[0.2em]">User.ID: 26039482</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Stats Grid */}

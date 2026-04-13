@@ -489,7 +489,7 @@ function DetailView({ character, onBack, onEdit, onSelect }: { character: CharCh
 
 function SettingsView({ appState, updateState, onBack }: { appState: any, updateState: (k: string, v: any) => void, onBack: () => void }) {
   const [cssInput, setCssInput] = useState(appState.charCustomCSS);
-  const [baseUrl, setBaseUrl] = useState(appState.apiBaseUrl || 'https://api.gemai.cc');
+  const [baseUrl, setBaseUrl] = useState(appState.apiBaseUrl || '');
   const [apiKey, setApiKey] = useState(appState.apiKey || '');
   const [showKey, setShowKey] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
@@ -696,9 +696,9 @@ function SettingsView({ appState, updateState, onBack }: { appState: any, update
             <button 
               onClick={() => {
                 if (confirm('确定要清除所有 API 配置吗？')) {
-                  setBaseUrl('https://api.gemai.cc');
+                  setBaseUrl('');
                   setApiKey('');
-                  updateState('apiBaseUrl', 'https://api.gemai.cc');
+                  updateState('apiBaseUrl', '');
                   updateState('apiKey', '');
                   updateState('availableModels', []);
                   updateState('selectedModel', '');

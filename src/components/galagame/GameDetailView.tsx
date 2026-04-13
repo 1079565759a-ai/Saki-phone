@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ArrowLeft, 
@@ -11,28 +11,81 @@ import {
   Plus,
   ChevronRight,
   MoreVertical,
-  Send
+  Send,
+  Camera
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
+import { compressImage } from '../../utils/image';
 
 interface GameDetailViewProps {
   game: any;
   onClose: () => void;
+  appState: any;
+  updateState: (key: string, value: any) => void;
 }
 
-const GameDetailView: React.FC<GameDetailViewProps> = ({ game, onClose }) => {
+const GameDetailView: React.FC<GameDetailViewProps> = ({ game, onClose, appState, updateState }) => {
   const [isLiked, setIsLiked] = useState(false);
   const [isCollected, setIsCollected] = useState(false);
   const [showRanking, setShowRanking] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [introExpanded, setIntroExpanded] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [editingCharId, setEditingCharId] = useState<number | null>(null);
+  const [editingGameCover, setEditingGameCover] = useState(false);
 
-  const characters = [
-    { id: 1, name: '沈星移', popularity: 12500, photo: 'https://picsum.photos/seed/char1/300/400' },
-    { id: 2, name: '陆昭', popularity: 9800, photo: 'https://picsum.photos/seed/char2/300/400' },
-    { id: 3, name: '顾廷烨', popularity: 8600, photo: 'https://picsum.photos/seed/char3/300/400' },
-    { id: 4, name: '齐衡', popularity: 7200, photo: 'https://picsum.photos/seed/char4/300/400' },
-  ];
+  const characters = appState.galaCharacters || [];
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const compressedDataUrl = await compressImage(file);
+      
+      if (editingGameCover) {
+        // Update game cover in all possible lists
+        const updateList = (listKey: string) => {
+          if (appState[listKey]) {
+            const updated = appState[listKey].map((g: any) => 
+              g.id === game.id ? { ...g, cover: compressedDataUrl } : g
+            );
+            updateState(listKey, updated);
+          }
+        };
+        updateList('galaHotGames');
+        updateList('galaMyGames');
+        updateList('galaRecords');
+        // Update local game object for immediate UI update
+        game.cover = compressedDataUrl;
+      } else if (editingCharId !== null) {
+        const updatedChars = characters.map((c: any) => 
+          c.id === editingCharId ? { ...c, photo: compressedDataUrl } : c
+        );
+        updateState('galaCharacters', updatedChars);
+      }
+    } catch (error) {
+      console.error("Failed to process image", error);
+    } finally {
+      setEditingCharId(null);
+      setEditingGameCover(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const triggerImageUpload = (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingCharId(id);
+    fileInputRef.current?.click();
+  };
+
+  const triggerGameCoverUpload = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingGameCover(true);
+    fileInputRef.current?.click();
+  };
 
   const comments = [
     { 
@@ -66,13 +119,26 @@ const GameDetailView: React.FC<GameDetailViewProps> = ({ game, onClose }) => {
       transition={{ type: 'spring', damping: 25, stiffness: 200 }}
       className="absolute inset-0 z-[60] bg-white flex flex-col overflow-y-auto no-scrollbar"
     >
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        onChange={handleImageUpload} 
+        accept="image/*" 
+        className="hidden" 
+      />
       {/* Hero Section */}
-      <div className="h-72 relative shrink-0">
+      <div className="h-72 relative shrink-0 group">
         <img src={game.cover} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
         <div className="absolute inset-0 bg-gradient-to-t from-white via-white/20 to-transparent" />
         <button 
+          onClick={triggerGameCoverUpload}
+          className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20"
+        >
+          <Camera className="w-8 h-8 text-white" />
+        </button>
+        <button 
           onClick={onClose}
-          className="absolute top-12 left-6 p-2 bg-white/80 backdrop-blur-md rounded-none border border-gray-100 text-gray-900 shadow-sm"
+          className="absolute top-12 left-6 p-2 bg-white/80 backdrop-blur-md rounded-none border border-gray-100 text-gray-900 shadow-sm z-30"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
@@ -155,38 +221,62 @@ const GameDetailView: React.FC<GameDetailViewProps> = ({ game, onClose }) => {
             </button>
           </div>
           
-          <div className="flex items-end justify-center gap-4 h-48">
+          <div className="flex items-end justify-center gap-4 h-56">
             {/* Top 2 */}
-            <div className="w-1/4 h-3/4 bg-white border border-gray-100 p-2 flex flex-col items-center justify-between relative">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gray-200" />
-              <div className="w-full aspect-square overflow-hidden border border-gray-50">
+            <div className="w-1/4 h-3/4 bg-white/40 backdrop-blur-md border border-white/50 p-2 flex flex-col items-center justify-between relative shadow-[0_8px_32px_rgba(0,0,0,0.1)] rounded-xl overflow-hidden">
+              <div className="absolute top-0 inset-x-0 h-1/3 bg-gradient-to-b from-white/60 to-transparent z-10 pointer-events-none" />
+              <div className="absolute bottom-0 inset-x-0 h-1/3 bg-gradient-to-t from-white/60 to-transparent z-10 pointer-events-none" />
+              <div className="absolute top-0 left-0 w-full h-1 bg-gray-300 z-20" />
+              <div className="w-full aspect-[3/4] overflow-hidden rounded-lg relative z-0 group">
                 <img src={characters[1].photo} className="w-full h-full object-cover grayscale" />
+                <button 
+                  onClick={(e) => triggerImageUpload(characters[1].id, e)}
+                  className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20"
+                >
+                  <Camera className="w-6 h-6 text-white" />
+                </button>
               </div>
-              <div className="text-center">
+              <div className="text-center relative z-20 mt-2">
                 <p className="text-[8px] font-bold text-gray-900 uppercase tracking-tighter">{characters[1].name}</p>
-                <p className="text-[6px] font-mono text-gray-300">{characters[1].popularity}</p>
+                <p className="text-[6px] font-mono text-gray-500">{characters[1].popularity}</p>
               </div>
             </div>
             {/* Top 1 */}
-            <div className="w-1/3 h-full bg-white border border-gray-900 p-2 flex flex-col items-center justify-between relative shadow-xl">
-              <div className="absolute top-0 left-0 w-full h-1 bg-yellow-400" />
-              <div className="w-full aspect-square overflow-hidden border border-gray-50">
+            <div className="w-1/3 h-full bg-white/60 backdrop-blur-md border border-white/60 p-2 flex flex-col items-center justify-between relative shadow-[0_12px_40px_rgba(0,0,0,0.15)] rounded-xl overflow-hidden transform -translate-y-2">
+              <div className="absolute top-0 inset-x-0 h-1/3 bg-gradient-to-b from-white/80 to-transparent z-10 pointer-events-none" />
+              <div className="absolute bottom-0 inset-x-0 h-1/3 bg-gradient-to-t from-white/80 to-transparent z-10 pointer-events-none" />
+              <div className="absolute top-0 left-0 w-full h-1 bg-gray-400 z-20" />
+              <div className="w-full aspect-[3/4] overflow-hidden rounded-lg relative z-0 group">
                 <img src={characters[0].photo} className="w-full h-full object-cover" />
+                <button 
+                  onClick={(e) => triggerImageUpload(characters[0].id, e)}
+                  className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20"
+                >
+                  <Camera className="w-6 h-6 text-white" />
+                </button>
               </div>
-              <div className="text-center">
+              <div className="text-center relative z-20 mt-2">
                 <p className="text-[10px] font-bold text-gray-900 uppercase tracking-widest">{characters[0].name}</p>
-                <p className="text-[7px] font-mono text-gray-400">{characters[0].popularity}</p>
+                <p className="text-[7px] font-mono text-gray-600">{characters[0].popularity}</p>
               </div>
             </div>
             {/* Top 3 */}
-            <div className="w-1/4 h-3/4 bg-white border border-gray-100 p-2 flex flex-col items-center justify-between relative">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gray-200" />
-              <div className="w-full aspect-square overflow-hidden border border-gray-50">
+            <div className="w-1/4 h-3/4 bg-white/40 backdrop-blur-md border border-white/50 p-2 flex flex-col items-center justify-between relative shadow-[0_8px_32px_rgba(0,0,0,0.1)] rounded-xl overflow-hidden">
+              <div className="absolute top-0 inset-x-0 h-1/3 bg-gradient-to-b from-white/60 to-transparent z-10 pointer-events-none" />
+              <div className="absolute bottom-0 inset-x-0 h-1/3 bg-gradient-to-t from-white/60 to-transparent z-10 pointer-events-none" />
+              <div className="absolute top-0 left-0 w-full h-1 bg-gray-300 z-20" />
+              <div className="w-full aspect-[3/4] overflow-hidden rounded-lg relative z-0 group">
                 <img src={characters[2].photo} className="w-full h-full object-cover grayscale" />
+                <button 
+                  onClick={(e) => triggerImageUpload(characters[2].id, e)}
+                  className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20"
+                >
+                  <Camera className="w-6 h-6 text-white" />
+                </button>
               </div>
-              <div className="text-center">
+              <div className="text-center relative z-20 mt-2">
                 <p className="text-[8px] font-bold text-gray-900 uppercase tracking-tighter">{characters[2].name}</p>
-                <p className="text-[6px] font-mono text-gray-300">{characters[2].popularity}</p>
+                <p className="text-[6px] font-mono text-gray-500">{characters[2].popularity}</p>
               </div>
             </div>
           </div>
@@ -243,32 +333,56 @@ const GameDetailView: React.FC<GameDetailViewProps> = ({ game, onClose }) => {
             
             <div className="flex-1 overflow-y-auto px-8 py-12 space-y-12">
               {/* Top 3 Header */}
-              <div className="flex items-end justify-center gap-8 mb-16">
-                <div className="flex flex-col items-center gap-3">
-                  <div className="w-16 h-16 rounded-full border border-gray-100 p-1 overflow-hidden">
-                    <img src={characters[1].photo} className="w-full h-full object-cover rounded-full" />
+              <div className="flex items-end justify-center gap-6 mb-16">
+                <div className="flex flex-col items-center gap-3 w-1/4">
+                  <div className="w-full aspect-[3/4] rounded-xl border border-white/50 bg-white/40 backdrop-blur-md p-1 overflow-hidden relative shadow-[0_8px_32px_rgba(0,0,0,0.1)] group">
+                    <div className="absolute top-0 inset-x-0 h-1/3 bg-gradient-to-b from-white/60 to-transparent z-10 pointer-events-none" />
+                    <div className="absolute bottom-0 inset-x-0 h-1/3 bg-gradient-to-t from-white/60 to-transparent z-10 pointer-events-none" />
+                    <img src={characters[1].photo} className="w-full h-full object-cover rounded-lg relative z-0 grayscale" />
+                    <button 
+                      onClick={(e) => triggerImageUpload(characters[1].id, e)}
+                      className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20"
+                    >
+                      <Camera className="w-6 h-6 text-white" />
+                    </button>
                   </div>
                   <div className="text-center">
-                    <p className="text-[8px] font-bold text-gray-900 uppercase">陆昭</p>
-                    <p className="text-[6px] font-mono text-gray-300">9800</p>
+                    <p className="text-[8px] font-bold text-gray-900 uppercase">{characters[1].name}</p>
+                    <p className="text-[6px] font-mono text-gray-500">{characters[1].popularity}</p>
                   </div>
                 </div>
-                <div className="flex flex-col items-center gap-4">
-                  <div className="w-20 h-20 rounded-full border-2 border-yellow-400 p-1 overflow-hidden">
-                    <img src={characters[0].photo} className="w-full h-full object-cover rounded-full" />
+                <div className="flex flex-col items-center gap-4 w-1/3 transform -translate-y-4">
+                  <div className="w-full aspect-[3/4] rounded-xl border border-white/60 bg-white/60 backdrop-blur-md p-1 overflow-hidden relative shadow-[0_12px_40px_rgba(0,0,0,0.15)] group">
+                    <div className="absolute top-0 inset-x-0 h-1/3 bg-gradient-to-b from-white/80 to-transparent z-10 pointer-events-none" />
+                    <div className="absolute bottom-0 inset-x-0 h-1/3 bg-gradient-to-t from-white/80 to-transparent z-10 pointer-events-none" />
+                    <img src={characters[0].photo} className="w-full h-full object-cover rounded-lg relative z-0" />
+                    <button 
+                      onClick={(e) => triggerImageUpload(characters[0].id, e)}
+                      className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20"
+                    >
+                      <Camera className="w-6 h-6 text-white" />
+                    </button>
                   </div>
                   <div className="text-center">
-                    <p className="text-[10px] font-bold text-gray-900 uppercase tracking-widest">沈星移</p>
-                    <p className="text-[7px] font-mono text-gray-400">12500</p>
+                    <p className="text-[10px] font-bold text-gray-900 uppercase tracking-widest">{characters[0].name}</p>
+                    <p className="text-[7px] font-mono text-gray-600">{characters[0].popularity}</p>
                   </div>
                 </div>
-                <div className="flex flex-col items-center gap-3">
-                  <div className="w-16 h-16 rounded-full border border-gray-100 p-1 overflow-hidden">
-                    <img src={characters[2].photo} className="w-full h-full object-cover rounded-full" />
+                <div className="flex flex-col items-center gap-3 w-1/4">
+                  <div className="w-full aspect-[3/4] rounded-xl border border-white/50 bg-white/40 backdrop-blur-md p-1 overflow-hidden relative shadow-[0_8px_32px_rgba(0,0,0,0.1)] group">
+                    <div className="absolute top-0 inset-x-0 h-1/3 bg-gradient-to-b from-white/60 to-transparent z-10 pointer-events-none" />
+                    <div className="absolute bottom-0 inset-x-0 h-1/3 bg-gradient-to-t from-white/60 to-transparent z-10 pointer-events-none" />
+                    <img src={characters[2].photo} className="w-full h-full object-cover rounded-lg relative z-0 grayscale" />
+                    <button 
+                      onClick={(e) => triggerImageUpload(characters[2].id, e)}
+                      className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20"
+                    >
+                      <Camera className="w-6 h-6 text-white" />
+                    </button>
                   </div>
                   <div className="text-center">
-                    <p className="text-[8px] font-bold text-gray-900 uppercase">顾廷烨</p>
-                    <p className="text-[6px] font-mono text-gray-300">8600</p>
+                    <p className="text-[8px] font-bold text-gray-900 uppercase">{characters[2].name}</p>
+                    <p className="text-[6px] font-mono text-gray-500">{characters[2].popularity}</p>
                   </div>
                 </div>
               </div>
@@ -279,8 +393,14 @@ const GameDetailView: React.FC<GameDetailViewProps> = ({ game, onClose }) => {
                   <div key={char.id} className="flex items-center justify-between p-4 bg-white border border-gray-50 hover:border-gray-900 transition-all">
                     <div className="flex items-center gap-4">
                       <span className="text-[10px] font-mono font-bold text-gray-200">{(idx + 1).toString().padStart(2, '0')}</span>
-                      <div className="w-10 h-10 rounded-full overflow-hidden border border-gray-100">
+                      <div className="w-10 h-10 rounded-full overflow-hidden border border-gray-100 relative group">
                         <img src={char.photo} className="w-full h-full object-cover" />
+                        <button 
+                          onClick={(e) => triggerImageUpload(char.id, e)}
+                          className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20"
+                        >
+                          <Camera className="w-4 h-4 text-white" />
+                        </button>
                       </div>
                       <div className="flex flex-col">
                         <span className="text-[10px] font-bold text-gray-900 uppercase tracking-widest">{char.name}</span>
