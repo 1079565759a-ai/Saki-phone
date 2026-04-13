@@ -685,7 +685,9 @@ export default function WeChatApp({
           </button>
           <div className="flex flex-col items-center">
             <span className="text-sm font-bold" style={{ color: chatSettings.fontColor }}>{activeChar.name}</span>
-            <span className="text-[10px] font-bold tracking-widest uppercase opacity-70" style={{ color: chatSettings.fontColor }}>Online</span>
+            <span className="text-[10px] font-bold tracking-widest uppercase opacity-70" style={{ color: chatSettings.fontColor }}>
+              {isTyping ? '正在输入中...' : 'Online'}
+            </span>
           </div>
           <button onClick={() => setChatSubView('profile')} className="p-2 hover:bg-black/5 rounded-full transition-colors">
             <MoreHorizontal className="w-6 h-6" style={{ color: chatSettings.fontColor }} />
@@ -697,92 +699,58 @@ export default function WeChatApp({
           ref={scrollRef}
           className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-hide relative z-10"
         >
-          {chatHistory.map((msg, idx) => {
+          {chatHistory.flatMap((msg, idx) => {
+            if (msg.role === 'user') return [{ ...msg, id: `${idx}-0` }];
             const parts = msg.text.split(/\[LINE\]/i).map((s: string) => s.trim()).filter(Boolean);
-            if (parts.length === 0 && msg.text.length > 0) parts.push(msg.text); // fallback for streaming or empty parts
-
-            return (
-              <div 
-                key={idx}
-                className={cn(
-                  "flex items-start gap-3",
-                  msg.role === 'user' ? "flex-row-reverse" : "flex-row"
-                )}
-              >
-                {/* Avatar */}
-                <div className={cn("shrink-0 relative", avatarSizeClass)}>
-                  <div className={cn("w-full h-full overflow-hidden bg-gray-100 shadow-sm", avatarShapeClass)}>
-                    <img 
-                      src={msg.role === 'user' ? (appState.currentUser?.avatar || "https://picsum.photos/seed/user/100/100") : activeChar.avatar} 
-                      className="w-full h-full object-cover" 
-                      alt="" 
-                      referrerPolicy="no-referrer"
-                    />
-                  </div>
-                  {chatSettings.avatarFrame && (
-                    <img src={chatSettings.avatarFrame} className="absolute inset-0 w-full h-full object-contain z-10 pointer-events-none scale-125" />
-                  )}
-                </div>
-                
-                {/* Bubbles */}
-                <div className={cn("flex flex-col gap-2 max-w-[75%]", msg.role === 'user' ? "items-end" : "items-start")}>
-                  {parts.map((part: string, pIdx: number) => (
-                    <div key={pIdx} className="relative">
-                      <div 
-                        className="rounded-lg shadow-sm relative z-10 px-3 py-1.5"
-                        style={{
-                          backgroundColor: msg.role === 'user' ? chatSettings.myBubbleColor : chatSettings.otherBubbleColor,
-                          color: chatSettings.fontColor,
-                          fontSize: `${chatSettings.bubbleFontSize}px`
-                        }}
-                      >
-                        {/* Bubble Tail - only show on first bubble */}
-                        {pIdx === 0 && (
-                          <div 
-                            className="absolute top-1/2 -translate-y-1/2 w-0 h-0 border-y-[6px] border-y-transparent z-0"
-                            style={{
-                              [msg.role === 'user' ? 'right' : 'left']: '-5px',
-                              [msg.role === 'user' ? 'borderLeftWidth' : 'borderRightWidth']: '6px',
-                              [msg.role === 'user' ? 'borderLeftColor' : 'borderRightColor']: msg.role === 'user' ? chatSettings.myBubbleColor : chatSettings.otherBubbleColor,
-                            }}
-                          />
-                        )}
-                        <div className="relative z-10 break-words whitespace-pre-wrap leading-relaxed">{part}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-          {isTyping && (
-            <div className="flex items-start gap-3">
+            if (parts.length === 0 && msg.text.length > 0) return [{ ...msg, id: `${idx}-0` }];
+            return parts.map((part, pIdx) => ({ ...msg, text: part, id: `${idx}-${pIdx}` }));
+          }).map((msg) => (
+            <div 
+              key={msg.id}
+              className={cn(
+                "flex items-start gap-3",
+                msg.role === 'user' ? "flex-row-reverse" : "flex-row"
+              )}
+            >
+              {/* Avatar */}
               <div className={cn("shrink-0 relative", avatarSizeClass)}>
                 <div className={cn("w-full h-full overflow-hidden bg-gray-100 shadow-sm", avatarShapeClass)}>
-                  <img src={activeChar.avatar} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                  <img 
+                    src={msg.role === 'user' ? (appState.currentUser?.avatar || "https://picsum.photos/seed/user/100/100") : activeChar.avatar} 
+                    className="w-full h-full object-cover" 
+                    alt="" 
+                    referrerPolicy="no-referrer"
+                  />
                 </div>
                 {chatSettings.avatarFrame && (
                   <img src={chatSettings.avatarFrame} className="absolute inset-0 w-full h-full object-contain z-10 pointer-events-none scale-125" />
                 )}
               </div>
+              
+              {/* Bubble */}
               <div className="relative max-w-[75%]">
                 <div 
                   className="rounded-lg shadow-sm relative z-10 px-3 py-1.5"
-                  style={{ backgroundColor: chatSettings.otherBubbleColor }}
+                  style={{
+                    backgroundColor: msg.role === 'user' ? chatSettings.myBubbleColor : chatSettings.otherBubbleColor,
+                    color: chatSettings.fontColor,
+                    fontSize: `${chatSettings.bubbleFontSize}px`
+                  }}
                 >
+                  {/* Bubble Tail */}
                   <div 
-                    className="absolute top-1/2 -translate-y-1/2 w-0 h-0 border-y-[6px] border-y-transparent border-r-[6px] left-[-5px] z-0"
-                    style={{ borderRightColor: chatSettings.otherBubbleColor }}
+                    className="absolute top-1/2 -translate-y-1/2 w-0 h-0 border-y-[6px] border-y-transparent z-0"
+                    style={{
+                      [msg.role === 'user' ? 'right' : 'left']: '-5px',
+                      [msg.role === 'user' ? 'borderLeftWidth' : 'borderRightWidth']: '6px',
+                      [msg.role === 'user' ? 'borderLeftColor' : 'borderRightColor']: msg.role === 'user' ? chatSettings.myBubbleColor : chatSettings.otherBubbleColor,
+                    }}
                   />
-                  <div className="flex gap-1.5 relative z-10 items-center h-full py-1">
-                    <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ backgroundColor: chatSettings.fontColor, opacity: 0.5 }} />
-                    <span className="w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:0.2s]" style={{ backgroundColor: chatSettings.fontColor, opacity: 0.5 }} />
-                    <span className="w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:0.4s]" style={{ backgroundColor: chatSettings.fontColor, opacity: 0.5 }} />
-                  </div>
+                  <div className="relative z-10 break-words whitespace-pre-wrap leading-relaxed">{msg.text}</div>
                 </div>
               </div>
             </div>
-          )}
+          ))}
         </div>
 
         {/* Chat Input */}
