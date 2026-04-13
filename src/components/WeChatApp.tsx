@@ -13,7 +13,13 @@ import {
   User,
   MessageSquare,
   Compass,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  Wand2,
+  RefreshCw,
+  Trash2,
+  Edit2,
+  Languages,
+  Undo2
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import LoginScreen from './LoginScreen';
@@ -80,6 +86,12 @@ export default function WeChatApp({
   const [isTyping, setIsTyping] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  
+  const [showPlusMenu, setShowPlusMenu] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, title: string, message: string, onConfirm: () => void} | null>(null);
+  const [contextMenu, setContextMenu] = useState<{msgId: string, x: number, y: number, isUser: boolean} | null>(null);
+  const [editModal, setEditModal] = useState<{isOpen: boolean, msgId: string, text: string} | null>(null);
+  const pressTimer = useRef<NodeJS.Timeout | null>(null);
 
   const activeChar = appState.charCharacters.find((c: any) => c.id === selectedChatId);
   const approvedChars = appState.charCharacters.filter((c: any) => c.isFriendApproved);
@@ -89,16 +101,16 @@ export default function WeChatApp({
   const chatSettingsByChar = appState.chatSettingsByChar || {};
   const savedSettings = selectedChatId ? chatSettingsByChar[selectedChatId] : null;
   const chatSettings: ChatSettings = {
-    backgroundImage: savedSettings?.backgroundImage ?? defaultChatSettings.backgroundImage,
-    chatBackgroundColor: savedSettings?.chatBackgroundColor ?? defaultChatSettings.chatBackgroundColor,
-    headerFooterColor: savedSettings?.headerFooterColor ?? defaultChatSettings.headerFooterColor,
-    bubbleFontSize: savedSettings?.bubbleFontSize ?? defaultChatSettings.bubbleFontSize,
-    myBubbleColor: savedSettings?.myBubbleColor ?? defaultChatSettings.myBubbleColor,
-    otherBubbleColor: savedSettings?.otherBubbleColor ?? defaultChatSettings.otherBubbleColor,
-    fontColor: savedSettings?.fontColor ?? defaultChatSettings.fontColor,
-    avatarShape: savedSettings?.avatarShape ?? defaultChatSettings.avatarShape,
-    avatarSize: savedSettings?.avatarSize ?? defaultChatSettings.avatarSize,
-    avatarFrame: savedSettings?.avatarFrame ?? defaultChatSettings.avatarFrame,
+    backgroundImage: savedSettings?.backgroundImage || null,
+    chatBackgroundColor: savedSettings?.chatBackgroundColor || defaultChatSettings.chatBackgroundColor,
+    headerFooterColor: savedSettings?.headerFooterColor || defaultChatSettings.headerFooterColor,
+    bubbleFontSize: savedSettings?.bubbleFontSize || defaultChatSettings.bubbleFontSize,
+    myBubbleColor: savedSettings?.myBubbleColor || defaultChatSettings.myBubbleColor,
+    otherBubbleColor: savedSettings?.otherBubbleColor || defaultChatSettings.otherBubbleColor,
+    fontColor: savedSettings?.fontColor || defaultChatSettings.fontColor,
+    avatarShape: savedSettings?.avatarShape || defaultChatSettings.avatarShape,
+    avatarSize: savedSettings?.avatarSize || defaultChatSettings.avatarSize,
+    avatarFrame: savedSettings?.avatarFrame || null,
   };
   
   const updateChatSettings = (newSettings: Partial<ChatSettings>) => {
@@ -134,8 +146,21 @@ export default function WeChatApp({
     }
   }, [selectedChatId]);
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = () => {
     if (!inputText.trim() || !selectedChatId || !activeChar) return;
+
+    const newMsg = { id: Date.now().toString() + Math.random().toString(36).substring(2), role: 'user', text: inputText };
+    
+    updateState('chatHistories', (prev: any) => ({
+      ...prev,
+      [selectedChatId]: [...(prev[selectedChatId] || []), newMsg]
+    }));
+    
+    setInputText('');
+  };
+
+  const triggerAI = async (historyToUse: any[]) => {
+    if (!selectedChatId || !activeChar) return;
 
     if (!appState.apiBaseUrl || !appState.apiKey) {
       setApiError('请先在设置中配置 API 地址和 Key');
@@ -143,15 +168,6 @@ export default function WeChatApp({
       return;
     }
 
-    const userMsg = { role: 'user', text: inputText };
-    const currentHistory = [...chatHistory, userMsg];
-    
-    updateState('chatHistories', (prev: any) => ({
-      ...prev,
-      [selectedChatId]: currentHistory
-    }));
-    
-    setInputText('');
     setIsTyping(true);
 
     try {
@@ -166,7 +182,8 @@ export default function WeChatApp({
 2. **禁止括号**：严禁使用括号（如()、[]、{}等）描述动作、神态、心理。
 3. **只输出气泡文字**：回复只能是消息框里的内容，无旁白。
 4. **分段发送**：必须模拟即时通讯软件的聊天习惯，将长句拆分为多条短消息发送，每条消息之间用 [LINE] 分隔。
-5. **标点习惯**：正常用标点符号，一条消息句末如果是句号一般不怎么加（表达情绪除外）会用标点符号表达情绪。`;
+5. **标点习惯**：正常用标点符号，一条消息句末如果是句号一般不怎么加（表达情绪除外）会用标点符号表达情绪。
+6. **内容质量**：每条消息字数不要太少，需有一定信息量，能引导话题。会恰当地使用标点符号表达情绪（如…！？。，等等）。允许出现少许的口语化表达，但前提必须符合人设！！`;
       const finalSystemPrompt = `${baseSystemPrompt}${characterPersona}${strictRules}`;
 
       const response = await fetch(url, {
@@ -179,7 +196,15 @@ export default function WeChatApp({
           model: appState.selectedModel || "gpt-3.5-turbo",
           messages: [
             { role: 'system', content: finalSystemPrompt },
-            ...currentHistory.map(m => ({ role: m.role === 'ai' ? 'assistant' : 'user', content: m.text }))
+            ...historyToUse.map(m => {
+              let content = m.text;
+              if (m.isRecalled) {
+                content = m.role === 'user' 
+                  ? `[用户撤回了一条消息，撤回的原始内容为: "${m.originalText}"]`
+                  : `[你撤回了一条消息，撤回的原始内容为: "${m.originalText}"]`;
+              }
+              return { role: m.role === 'ai' ? 'assistant' : 'user', content };
+            })
           ],
           stream: true
         })
@@ -195,10 +220,10 @@ export default function WeChatApp({
       let aiFullText = '';
 
       if (reader) {
-        // Add an empty AI message to start streaming into
+        const newMsgId = Date.now().toString() + Math.random().toString(36).substring(2);
         updateState('chatHistories', (prev: any) => ({
           ...prev,
-          [selectedChatId]: [...currentHistory, { role: 'ai', text: '' }]
+          [selectedChatId]: [...historyToUse, { id: newMsgId, role: 'ai', text: '' }]
         }));
 
         while (true) {
@@ -218,11 +243,10 @@ export default function WeChatApp({
                 const content = data.choices[0]?.delta?.content || '';
                 if (content) {
                   aiFullText += content;
-                  // Update the last message in history
                   updateState('chatHistories', (prev: any) => {
                     const history = [...(prev[selectedChatId] || [])];
                     if (history.length > 0) {
-                      history[history.length - 1] = { role: 'ai', text: aiFullText };
+                      history[history.length - 1] = { ...history[history.length - 1], text: aiFullText };
                     }
                     return { ...prev, [selectedChatId]: history };
                   });
@@ -236,7 +260,7 @@ export default function WeChatApp({
       }
     } catch (error: any) {
       console.error("AI generation failed:", error);
-      const errorMsg = { role: 'ai', text: `发生错误: ${error.message || "未知错误"}` };
+      const errorMsg = { id: Date.now().toString(), role: 'ai', text: `发生错误: ${error.message || "未知错误"}` };
       updateState('chatHistories', (prev: any) => ({
         ...prev,
         [selectedChatId]: [...(prev[selectedChatId] || []), errorMsg]
@@ -244,6 +268,126 @@ export default function WeChatApp({
     } finally {
       setIsTyping(false);
     }
+  };
+
+  const handleTriggerAIReply = () => {
+    triggerAI(chatHistory);
+  };
+
+  const handleRegenerate = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: '重回消息',
+      message: '确定要重回这一轮消息吗？AI将重新回复，且之前的回复将被遗忘。',
+      onConfirm: () => {
+        const history = chatHistory;
+        let lastUserIdx = -1;
+        for (let i = history.length - 1; i >= 0; i--) {
+          if (history[i].role === 'user') {
+            lastUserIdx = i;
+            break;
+          }
+        }
+        if (lastUserIdx !== -1) {
+          const newHistory = history.slice(0, lastUserIdx + 1);
+          updateState('chatHistories', (prev: any) => ({
+            ...prev,
+            [selectedChatId!]: newHistory
+          }));
+          triggerAI(newHistory);
+        }
+        setConfirmModal(null);
+        setShowPlusMenu(false);
+      }
+    });
+  };
+
+  const handlePointerDown = (e: React.PointerEvent, msgId: string, isUser: boolean) => {
+    pressTimer.current = setTimeout(() => {
+      setContextMenu({ msgId, x: e.clientX, y: e.clientY, isUser });
+    }, 500);
+  };
+
+  const handlePointerUpOrLeave = () => {
+    if (pressTimer.current) clearTimeout(pressTimer.current);
+  };
+
+  const handleRecall = (msgId: string) => {
+    setContextMenu(null);
+    updateState('chatHistories', (prev: any) => {
+      const hist = prev[selectedChatId!] || [];
+      return {
+        ...prev,
+        [selectedChatId!]: hist.map((m: any) => m.id === msgId || (!m.id && hist.indexOf(m) === parseInt(msgId)) ? { ...m, isRecalled: true, originalText: m.text, text: '[撤回了一条消息]' } : m)
+      };
+    });
+  };
+
+  const handleDelete = (msgId: string) => {
+    setContextMenu(null);
+    updateState('chatHistories', (prev: any) => {
+      const hist = prev[selectedChatId!] || [];
+      return {
+        ...prev,
+        [selectedChatId!]: hist.filter((m: any) => m.id !== msgId && (!m.id ? hist.indexOf(m) !== parseInt(msgId) : true))
+      };
+    });
+  };
+
+  const handleTranslate = async (msgId: string) => {
+    setContextMenu(null);
+    const msg = chatHistory.find((m: any, i: number) => m.id === msgId || (!m.id && i === parseInt(msgId)));
+    if (!msg || !msg.text) return;
+    
+    updateState('chatHistories', (prev: any) => {
+      const hist = prev[selectedChatId!] || [];
+      return {
+        ...prev,
+        [selectedChatId!]: hist.map((m: any) => m.id === msgId || (!m.id && hist.indexOf(m) === parseInt(msgId)) ? { ...m, isTranslating: true } : m)
+      };
+    });
+
+    try {
+      const url = appState.apiBaseUrl.endsWith('/') ? `${appState.apiBaseUrl}chat/completions` : `${appState.apiBaseUrl}/chat/completions`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${appState.apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: appState.selectedModel || "gpt-3.5-turbo",
+          messages: [{ role: 'user', content: `Translate the following text to Chinese (if it's already Chinese, translate to English). Only output the translation, nothing else:\n\n${msg.text}` }]
+        })
+      });
+      const data = await response.json();
+      const translation = data.choices?.[0]?.message?.content || '翻译失败';
+      
+      updateState('chatHistories', (prev: any) => {
+        const hist = prev[selectedChatId!] || [];
+        return {
+          ...prev,
+          [selectedChatId!]: hist.map((m: any) => m.id === msgId || (!m.id && hist.indexOf(m) === parseInt(msgId)) ? { ...m, translation, isTranslating: false } : m)
+        };
+      });
+    } catch (err) {
+      updateState('chatHistories', (prev: any) => {
+        const hist = prev[selectedChatId!] || [];
+        return {
+          ...prev,
+          [selectedChatId!]: hist.map((m: any) => m.id === msgId || (!m.id && hist.indexOf(m) === parseInt(msgId)) ? { ...m, translation: '翻译失败', isTranslating: false } : m)
+        };
+      });
+    }
+  };
+
+  const saveEdit = () => {
+    if (!editModal) return;
+    updateState('chatHistories', (prev: any) => {
+      const hist = prev[selectedChatId!] || [];
+      return {
+        ...prev,
+        [selectedChatId!]: hist.map((m: any) => m.id === editModal.msgId || (!m.id && hist.indexOf(m) === parseInt(editModal.msgId)) ? { ...m, text: editModal.text } : m)
+      };
+    });
+    setEditModal(null);
   };
 
   const handleApproveFriend = (charId: string) => {
@@ -453,12 +597,12 @@ export default function WeChatApp({
                           updateChatSettings({ backgroundImage: compressed });
                         } catch (err) {
                           console.error("Failed to compress background image:", err);
-                          // Fallback to raw data URL if compression fails
                           const reader = new FileReader();
                           reader.onload = (ev) => updateChatSettings({ backgroundImage: ev.target?.result as string });
                           reader.readAsDataURL(file);
                         }
                       }
+                      e.target.value = '';
                     }}
                   />
                 </div>
@@ -509,6 +653,7 @@ export default function WeChatApp({
                       onChange={(e) => updateChatSettings({ chatBackgroundColor: e.target.value })}
                       className="w-8 h-8 rounded cursor-pointer border-0 p-0"
                     />
+                    <span className="text-xs font-mono text-gray-500">{chatSettings.chatBackgroundColor}</span>
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -520,6 +665,7 @@ export default function WeChatApp({
                       onChange={(e) => updateChatSettings({ headerFooterColor: e.target.value })}
                       className="w-8 h-8 rounded cursor-pointer border-0 p-0"
                     />
+                    <span className="text-xs font-mono text-gray-500">{chatSettings.headerFooterColor}</span>
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -531,6 +677,7 @@ export default function WeChatApp({
                       onChange={(e) => updateChatSettings({ fontColor: e.target.value })}
                       className="w-8 h-8 rounded cursor-pointer border-0 p-0"
                     />
+                    <span className="text-xs font-mono text-gray-500">{chatSettings.fontColor}</span>
                   </div>
                 </div>
               </div>
@@ -629,6 +776,7 @@ export default function WeChatApp({
                             reader.readAsDataURL(file);
                           }
                         }
+                        e.target.value = '';
                       }}
                     />
                   </div>
@@ -700,11 +848,22 @@ export default function WeChatApp({
           className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-hide relative z-10"
         >
           {chatHistory.flatMap((msg, idx) => {
-            if (msg.role === 'user') return [{ ...msg, id: `${idx}-0` }];
+            if (msg.isRecalled) return [{ ...msg, id: msg.id || `${idx}-0` }];
+            if (msg.role === 'user') return [{ ...msg, id: msg.id || `${idx}-0` }];
             const parts = msg.text.split(/\[LINE\]/i).map((s: string) => s.trim()).filter(Boolean);
-            if (parts.length === 0 && msg.text.length > 0) return [{ ...msg, id: `${idx}-0` }];
-            return parts.map((part, pIdx) => ({ ...msg, text: part, id: `${idx}-${pIdx}` }));
-          }).map((msg) => (
+            if (parts.length === 0 && msg.text.length > 0) return [{ ...msg, id: msg.id || `${idx}-0` }];
+            return parts.map((part, pIdx) => ({ ...msg, text: part, id: msg.id ? `${msg.id}-${pIdx}` : `${idx}-${pIdx}`, parentId: msg.id || `${idx}` }));
+          }).map((msg) => {
+            if (msg.isRecalled) {
+              return (
+                <div key={msg.id} className="flex justify-center my-2">
+                  <span className="text-xs text-gray-400 bg-black/5 px-3 py-1 rounded-full">
+                    {msg.role === 'user' ? '你' : activeChar.name}撤回了一条消息
+                  </span>
+                </div>
+              );
+            }
+            return (
             <div 
               key={msg.id}
               className={cn(
@@ -730,12 +889,16 @@ export default function WeChatApp({
               {/* Bubble */}
               <div className="relative max-w-[75%]">
                 <div 
-                  className="rounded-lg shadow-sm relative z-10 px-3 py-1.5"
+                  className="rounded-lg shadow-sm relative z-10 px-3 py-1.5 cursor-pointer"
                   style={{
                     backgroundColor: msg.role === 'user' ? chatSettings.myBubbleColor : chatSettings.otherBubbleColor,
                     color: chatSettings.fontColor,
                     fontSize: `${chatSettings.bubbleFontSize}px`
                   }}
+                  onPointerDown={(e) => handlePointerDown(e, msg.parentId || msg.id, msg.role === 'user')}
+                  onPointerUp={handlePointerUpOrLeave}
+                  onPointerLeave={handlePointerUpOrLeave}
+                  onContextMenu={(e) => e.preventDefault()}
                 >
                   {/* Bubble Tail */}
                   <div 
@@ -746,12 +909,41 @@ export default function WeChatApp({
                       [msg.role === 'user' ? 'borderLeftColor' : 'borderRightColor']: msg.role === 'user' ? chatSettings.myBubbleColor : chatSettings.otherBubbleColor,
                     }}
                   />
-                  <div className="relative z-10 break-words whitespace-pre-wrap leading-relaxed">{msg.text}</div>
+                  <div className="relative z-10 break-words whitespace-pre-wrap leading-relaxed">
+                    {msg.text}
+                    {msg.isTranslating && (
+                      <div className="mt-2 pt-2 border-t border-black/10 text-xs opacity-70 flex items-center gap-1">
+                        <RefreshCw className="w-3 h-3 animate-spin" /> 翻译中...
+                      </div>
+                    )}
+                    {msg.translation && (
+                      <div className="mt-2 pt-2 border-t border-black/10 text-sm opacity-90">
+                        {msg.translation}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
-          ))}
+          )})}
         </div>
+
+        {/* Plus Menu Popup */}
+        <AnimatePresence>
+          {showPlusMenu && (
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="absolute bottom-[70px] left-4 bg-white rounded-xl shadow-lg border p-2 flex gap-2 z-50"
+            >
+              <button onClick={handleRegenerate} className="flex flex-col items-center p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                <RefreshCw className="w-6 h-6 text-gray-600 mb-1" />
+                <span className="text-xs text-gray-600">重回</span>
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Chat Input */}
         <div 
@@ -761,8 +953,12 @@ export default function WeChatApp({
             borderColor: `${chatSettings.fontColor}1a`
           }}
         >
-          <button className="p-2 hover:bg-black/5 rounded-full transition-all" style={{ color: chatSettings.fontColor }}>
-            <Mic className="w-6 h-6 opacity-70" />
+          <button 
+            onClick={() => setShowPlusMenu(!showPlusMenu)}
+            className="p-2 hover:bg-black/5 rounded-full transition-all" 
+            style={{ color: chatSettings.fontColor }}
+          >
+            <Plus className="w-6 h-6 opacity-70" />
           </button>
           <div 
             className="flex-1 rounded-full px-5 py-2.5 flex items-center shadow-inner"
@@ -781,20 +977,66 @@ export default function WeChatApp({
               <Smile className="w-5 h-5 opacity-70" />
             </button>
           </div>
-          {inputText.trim() ? (
-            <button 
-              onClick={handleSendMessage}
-              className="w-11 h-11 rounded-full flex items-center justify-center shadow-md active:scale-90 transition-all"
-              style={{ backgroundColor: chatSettings.fontColor, color: chatSettings.headerFooterColor }}
-            >
-              <Send className="w-5 h-5 ml-1" />
-            </button>
-          ) : (
-            <button className="p-2 hover:bg-black/5 rounded-full transition-all" style={{ color: chatSettings.fontColor }}>
-              <Plus className="w-6 h-6 opacity-70" />
-            </button>
-          )}
+          <button 
+            onClick={handleTriggerAIReply}
+            className="w-11 h-11 rounded-full flex items-center justify-center shadow-md active:scale-90 transition-all"
+            style={{ backgroundColor: chatSettings.fontColor, color: chatSettings.headerFooterColor }}
+          >
+            <Wand2 className="w-5 h-5" />
+          </button>
         </div>
+
+        {/* Context Menu */}
+        {contextMenu && (
+          <>
+            <div className="fixed inset-0 z-[80]" onClick={() => setContextMenu(null)} />
+            <div 
+              className="fixed z-[90] bg-white rounded-lg shadow-xl border py-1 w-32"
+              style={{ left: Math.min(contextMenu.x, window.innerWidth - 130), top: contextMenu.y }}
+            >
+              <button onClick={() => handleRecall(contextMenu.msgId)} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"><Undo2 className="w-4 h-4"/> 撤回</button>
+              <button onClick={() => handleTranslate(contextMenu.msgId)} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"><Languages className="w-4 h-4"/> 翻译</button>
+              <button onClick={() => { 
+                const msg = chatHistory.find((m: any, i: number) => m.id === contextMenu.msgId || (!m.id && i === parseInt(contextMenu.msgId)));
+                setEditModal({isOpen: true, msgId: contextMenu.msgId, text: msg?.text || ''}); 
+                setContextMenu(null); 
+              }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"><Edit2 className="w-4 h-4"/> 编辑</button>
+              <button onClick={() => handleDelete(contextMenu.msgId)} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 text-red-600 flex items-center gap-2"><Trash2 className="w-4 h-4"/> 删除</button>
+            </div>
+          </>
+        )}
+
+        {/* Edit Modal */}
+        {editModal?.isOpen && (
+          <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl w-full max-w-sm p-4">
+              <h3 className="font-bold mb-4">编辑消息</h3>
+              <textarea 
+                className="w-full border rounded-lg p-2 min-h-[100px] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={editModal.text}
+                onChange={e => setEditModal({...editModal, text: e.target.value})}
+              />
+              <div className="flex justify-end gap-2 mt-4">
+                <button onClick={() => setEditModal(null)} className="px-4 py-2 rounded-lg bg-gray-100 font-medium">取消</button>
+                <button onClick={saveEdit} className="px-4 py-2 rounded-lg bg-blue-500 text-white font-medium">保存</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Confirm Modal */}
+        {confirmModal?.isOpen && (
+          <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl w-full max-w-sm p-6 text-center">
+              <h3 className="font-bold text-lg mb-2">{confirmModal.title}</h3>
+              <p className="text-gray-600 text-sm mb-6">{confirmModal.message}</p>
+              <div className="flex gap-3">
+                <button onClick={() => setConfirmModal(null)} className="flex-1 py-2.5 rounded-xl bg-gray-100 font-medium">取消</button>
+                <button onClick={confirmModal.onConfirm} className="flex-1 py-2.5 rounded-xl bg-blue-500 text-white font-medium">确认</button>
+              </div>
+            </div>
+          </div>
+        )}
       </motion.div>
     );
   }
