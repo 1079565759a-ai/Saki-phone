@@ -53,6 +53,9 @@ export interface ChatSettings {
   avatarShape: 'circle' | 'square';
   avatarSize: 'small' | 'medium' | 'large';
   avatarFrame: string | null;
+  bgOpacity: number;
+  bubbleOpacity: number;
+  bubbleRadius: number;
 }
 
 const defaultChatSettings: ChatSettings = {
@@ -66,6 +69,24 @@ const defaultChatSettings: ChatSettings = {
   avatarShape: 'square',
   avatarSize: 'medium',
   avatarFrame: null,
+  bgOpacity: 100,
+  bubbleOpacity: 100,
+  bubbleRadius: 8,
+};
+
+const hexToRgba = (hex: string, opacity: number) => {
+  if (!hex) return 'transparent';
+  let r = 0, g = 0, b = 0;
+  if (hex.length === 4) {
+    r = parseInt(hex[1] + hex[1], 16);
+    g = parseInt(hex[2] + hex[2], 16);
+    b = parseInt(hex[3] + hex[3], 16);
+  } else if (hex.length === 7) {
+    r = parseInt(hex.slice(1, 3), 16);
+    g = parseInt(hex.slice(3, 5), 16);
+    b = parseInt(hex.slice(5, 7), 16);
+  }
+  return `rgba(${r}, ${g}, ${b}, ${opacity / 100})`;
 };
 
 export default function WeChatApp({ 
@@ -111,6 +132,9 @@ export default function WeChatApp({
     avatarShape: savedSettings?.avatarShape || defaultChatSettings.avatarShape,
     avatarSize: savedSettings?.avatarSize || defaultChatSettings.avatarSize,
     avatarFrame: savedSettings?.avatarFrame || null,
+    bgOpacity: savedSettings?.bgOpacity ?? defaultChatSettings.bgOpacity,
+    bubbleOpacity: savedSettings?.bubbleOpacity ?? defaultChatSettings.bubbleOpacity,
+    bubbleRadius: savedSettings?.bubbleRadius ?? defaultChatSettings.bubbleRadius,
   };
   
   const updateChatSettings = (newSettings: Partial<ChatSettings>) => {
@@ -489,11 +513,11 @@ export default function WeChatApp({
               <h3 className="text-xs font-bold text-gray-900 uppercase tracking-widest">实时预览</h3>
               <div 
                 className="w-full h-48 rounded-2xl border border-gray-200 overflow-hidden relative flex flex-col shadow-inner"
-                style={{ backgroundColor: chatSettings.chatBackgroundColor }}
+                style={{ backgroundColor: hexToRgba(chatSettings.chatBackgroundColor, chatSettings.bgOpacity) }}
               >
                 {/* Preview Background */}
                 {chatSettings.backgroundImage && (
-                  <img src={chatSettings.backgroundImage} className="absolute inset-0 w-full h-full object-cover z-0" alt="bg-preview" />
+                  <img src={chatSettings.backgroundImage} className="absolute inset-0 w-full h-full object-cover z-0" alt="bg-preview" style={{ opacity: chatSettings.bgOpacity / 100 }} />
                 )}
                 
                 {/* Preview Header */}
@@ -520,16 +544,17 @@ export default function WeChatApp({
                       )}
                     </div>
                     <div 
-                      className="rounded-lg shadow-sm relative z-10 px-2.5 py-1"
+                      className="shadow-sm relative z-10 px-2.5 py-1"
                       style={{
-                        backgroundColor: chatSettings.otherBubbleColor,
+                        backgroundColor: hexToRgba(chatSettings.otherBubbleColor, chatSettings.bubbleOpacity),
                         color: chatSettings.fontColor,
-                        fontSize: `${Math.max(10, chatSettings.bubbleFontSize - 2)}px`
+                        fontSize: `${Math.max(10, chatSettings.bubbleFontSize - 2)}px`,
+                        borderRadius: `${chatSettings.bubbleRadius}px`
                       }}
                     >
                       <div 
                         className="absolute top-1/2 -translate-y-1/2 w-0 h-0 border-y-[4px] border-y-transparent border-r-[4px] left-[-4px] z-0"
-                        style={{ borderRightColor: chatSettings.otherBubbleColor }}
+                        style={{ borderRightColor: hexToRgba(chatSettings.otherBubbleColor, chatSettings.bubbleOpacity) }}
                       />
                       <div className="relative z-10">你好！这是预览效果。</div>
                     </div>
@@ -546,16 +571,17 @@ export default function WeChatApp({
                       )}
                     </div>
                     <div 
-                      className="rounded-lg shadow-sm relative z-10 px-2.5 py-1"
+                      className="shadow-sm relative z-10 px-2.5 py-1"
                       style={{
-                        backgroundColor: chatSettings.myBubbleColor,
+                        backgroundColor: hexToRgba(chatSettings.myBubbleColor, chatSettings.bubbleOpacity),
                         color: chatSettings.fontColor,
-                        fontSize: `${Math.max(10, chatSettings.bubbleFontSize - 2)}px`
+                        fontSize: `${Math.max(10, chatSettings.bubbleFontSize - 2)}px`,
+                        borderRadius: `${chatSettings.bubbleRadius}px`
                       }}
                     >
                       <div 
                         className="absolute top-1/2 -translate-y-1/2 w-0 h-0 border-y-[4px] border-y-transparent border-l-[4px] right-[-4px] z-0"
-                        style={{ borderLeftColor: chatSettings.myBubbleColor }}
+                        style={{ borderLeftColor: hexToRgba(chatSettings.myBubbleColor, chatSettings.bubbleOpacity) }}
                       />
                       <div className="relative z-10">太棒了，看起来很不错！</div>
                     </div>
@@ -683,20 +709,67 @@ export default function WeChatApp({
               </div>
             </div>
 
-            {/* Bubble Size */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold text-gray-900 uppercase tracking-widest">气泡字体大小 (px)</h3>
-                <span className="text-xs font-mono text-gray-500">{chatSettings.bubbleFontSize}px</span>
+            {/* Bubble Size & Shape & Opacity */}
+            <div className="space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-gray-900 uppercase tracking-widest">气泡字体大小 (px)</h3>
+                  <span className="text-xs font-mono text-gray-500">{chatSettings.bubbleFontSize}px</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="10" 
+                  max="24" 
+                  value={chatSettings.bubbleFontSize}
+                  onChange={(e) => updateChatSettings({ bubbleFontSize: parseInt(e.target.value) })}
+                  className="w-full accent-gray-900"
+                />
               </div>
-              <input 
-                type="range" 
-                min="10" 
-                max="24" 
-                value={chatSettings.bubbleFontSize}
-                onChange={(e) => updateChatSettings({ bubbleFontSize: parseInt(e.target.value) })}
-                className="w-full accent-gray-900"
-              />
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-gray-900 uppercase tracking-widest">界面背景透明度 (%)</h3>
+                  <span className="text-xs font-mono text-gray-500">{chatSettings.bgOpacity}%</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="100" 
+                  value={chatSettings.bgOpacity}
+                  onChange={(e) => updateChatSettings({ bgOpacity: parseInt(e.target.value) })}
+                  className="w-full accent-gray-900"
+                />
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-gray-900 uppercase tracking-widest">气泡透明度 (%)</h3>
+                  <span className="text-xs font-mono text-gray-500">{chatSettings.bubbleOpacity}%</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="100" 
+                  value={chatSettings.bubbleOpacity}
+                  onChange={(e) => updateChatSettings({ bubbleOpacity: parseInt(e.target.value) })}
+                  className="w-full accent-gray-900"
+                />
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-gray-900 uppercase tracking-widest">气泡圆角程度 (px)</h3>
+                  <span className="text-xs font-mono text-gray-500">{chatSettings.bubbleRadius}px</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="24" 
+                  value={chatSettings.bubbleRadius}
+                  onChange={(e) => updateChatSettings({ bubbleRadius: parseInt(e.target.value) })}
+                  className="w-full accent-gray-900"
+                />
+              </div>
             </div>
 
             {/* Avatar Settings */}
@@ -809,9 +882,10 @@ export default function WeChatApp({
               src={chatSettings.backgroundImage} 
               className="w-full h-full object-cover" 
               alt="background" 
+              style={{ opacity: chatSettings.bgOpacity / 100 }}
             />
           ) : (
-            <div className="w-full h-full" style={{ backgroundColor: chatSettings.chatBackgroundColor }} />
+            <div className="w-full h-full" style={{ backgroundColor: chatSettings.chatBackgroundColor, opacity: chatSettings.bgOpacity / 100 }} />
           )}
         </div>
 
@@ -889,11 +963,12 @@ export default function WeChatApp({
               {/* Bubble */}
               <div className="relative max-w-[75%]">
                 <div 
-                  className="rounded-lg shadow-sm relative z-10 px-3 py-1.5 cursor-pointer"
+                  className="shadow-sm relative z-10 px-3 py-1.5 cursor-pointer"
                   style={{
-                    backgroundColor: msg.role === 'user' ? chatSettings.myBubbleColor : chatSettings.otherBubbleColor,
+                    backgroundColor: hexToRgba(msg.role === 'user' ? chatSettings.myBubbleColor : chatSettings.otherBubbleColor, chatSettings.bubbleOpacity),
                     color: chatSettings.fontColor,
-                    fontSize: `${chatSettings.bubbleFontSize}px`
+                    fontSize: `${chatSettings.bubbleFontSize}px`,
+                    borderRadius: `${chatSettings.bubbleRadius}px`
                   }}
                   onPointerDown={(e) => handlePointerDown(e, msg.parentId || msg.id, msg.role === 'user')}
                   onPointerUp={handlePointerUpOrLeave}
@@ -906,7 +981,7 @@ export default function WeChatApp({
                     style={{
                       [msg.role === 'user' ? 'right' : 'left']: '-5px',
                       [msg.role === 'user' ? 'borderLeftWidth' : 'borderRightWidth']: '6px',
-                      [msg.role === 'user' ? 'borderLeftColor' : 'borderRightColor']: msg.role === 'user' ? chatSettings.myBubbleColor : chatSettings.otherBubbleColor,
+                      [msg.role === 'user' ? 'borderLeftColor' : 'borderRightColor']: hexToRgba(msg.role === 'user' ? chatSettings.myBubbleColor : chatSettings.otherBubbleColor, chatSettings.bubbleOpacity),
                     }}
                   />
                   <div className="relative z-10 break-words whitespace-pre-wrap leading-relaxed">
