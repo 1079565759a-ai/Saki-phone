@@ -121,14 +121,18 @@ const TextPhotoBubble = ({ text, isUser, chatSettings }: { text: string, isUser:
       >
         {/* Front (Looks like a photo) */}
         <div 
-          className="absolute inset-0 rounded-xl overflow-hidden border-2 flex items-center justify-center bg-gray-100"
-          style={{ 
-            borderColor: isUser ? chatSettings.myBubbleColor : chatSettings.otherBubbleColor,
-            backfaceVisibility: 'hidden'
-          }}
+          className="absolute inset-0 rounded-xl overflow-hidden shadow-sm flex flex-col bg-white"
+          style={{ backfaceVisibility: 'hidden' }}
         >
-          <ImageIcon className="w-12 h-12 text-gray-300" />
-          <div className="absolute bottom-2 right-2 bg-black/50 text-white text-[10px] px-2 py-0.5 rounded-full">点击查看</div>
+          <div className="flex-1 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center relative">
+            <ImageIcon className="w-10 h-10 text-gray-400 drop-shadow-sm" />
+            <div className="absolute inset-0 bg-black/5 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+              <RefreshCw className="w-6 h-6 text-white drop-shadow-md" />
+            </div>
+          </div>
+          <div className="h-8 bg-white flex items-center justify-center">
+            <div className="w-16 h-1 bg-gray-200 rounded-full" />
+          </div>
         </div>
         {/* Back (Text description) */}
         <div 
@@ -257,20 +261,24 @@ export default function WeChatApp({
   const handleSendMessage = () => {
     if (!inputText.trim() || !selectedChatId || !activeChar) return;
 
-    const newMsg = { 
-      id: Date.now().toString() + Math.random().toString(36).substring(2), 
-      role: 'user', 
-      text: inputText,
-      quote: replyingTo ? { text: replyingTo.text, role: replyingTo.role } : undefined
-    };
+    const parts = inputText.split(/\n+/).map(s => s.trim()).filter(Boolean);
+    if (parts.length === 0) return;
+
+    const newMsgs = parts.map((part, idx) => ({
+      id: Date.now().toString() + Math.random().toString(36).substring(2) + `-${idx}`,
+      role: 'user',
+      text: part,
+      quote: (idx === 0 && replyingTo) ? { text: replyingTo.text, role: replyingTo.role } : undefined
+    }));
     
     updateState('chatHistories', (prev: any) => ({
       ...prev,
-      [selectedChatId]: [...(prev[selectedChatId] || []), newMsg]
+      [selectedChatId]: [...(prev[selectedChatId] || []), ...newMsgs]
     }));
     
     setInputText('');
     setReplyingTo(null);
+    setIsTyping(true);
   };
 
   const triggerAI = async (historyToUse: any[]) => {
@@ -297,7 +305,10 @@ export default function WeChatApp({
 3. **只输出气泡文字**：回复只能是消息框里的内容，无旁白。
 4. **分段发送（多气泡）**：如果需要连续发送多条消息，请直接换行。**注意：每次换行必须是一个完整、连贯的句子！绝对不能把一个完整的长句强行切分成几个没有意义的短句！** 每次换行将作为一个独立的气泡发送。请多发几个完整的句子（即多换几行，发送多条消息）。
 5. **标点习惯**：正常用标点符号，一条消息句末如果是句号一般不怎么加（表达情绪除外）会用标点符号表达情绪。
-6. **内容质量与字数**：**每条消息（每个气泡）的字数绝对不能太少！** 必须有充足的信息量，能引导话题。会恰当地使用标点符号表达情绪（如…！？。，等等）。允许出现少许的口语化表达，但前提必须符合人设！！`;
+6. **内容质量与字数**：**每条消息（每个气泡）的字数绝对不能太少！** 必须有充足的信息量，能引导话题。会恰当地使用标点符号表达情绪（如…！？。，等等）。允许出现少许的口语化表达，但前提必须符合人设！！
+7. **特殊功能**：
+- 如果你想撤回自己上一条发出的消息，请单独回复 \`[撤回]\`。
+- 如果你想引用对方的话，请在回复开头使用 \`[引用:对方的话]\`，然后换行写你的回复。`;
       const finalSystemPrompt = `${baseSystemPrompt}${characterPersona}${strictRules}`;
 
       const response = await fetch(url, {
@@ -332,13 +343,10 @@ export default function WeChatApp({
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let aiFullText = '';
+      let hasRecalled = false;
 
       if (reader) {
-        const newMsgId = Date.now().toString() + Math.random().toString(36).substring(2);
-        updateState('chatHistories', (prev: any) => ({
-          ...prev,
-          [selectedChatId]: [...historyToUse, { id: newMsgId, role: 'ai', text: '' }]
-        }));
+        const baseMsgId = Date.now().toString() + Math.random().toString(36).substring(2);
 
         while (true) {
           const { done, value } = await reader.read();
@@ -357,13 +365,45 @@ export default function WeChatApp({
                 const content = data.choices[0]?.delta?.content || '';
                 if (content) {
                   aiFullText += content;
+                  
+                  let displayContent = aiFullText;
+                  let quoteMatch = displayContent.match(/\[引用:(.*?)\]/);
+                  let quote = undefined;
+                  if (quoteMatch) {
+                    quote = { role: 'user', text: quoteMatch[1] };
+                    displayContent = displayContent.replace(quoteMatch[0], '').trim();
+                  }
+                  
+                  let isRecalling = displayContent.includes('[撤回]');
+                  displayContent = displayContent.replace(/\[撤回\]/g, '').trim();
+
+                  const parts = displayContent.split(/\n+/).map(s => s.trim()).filter(Boolean);
+
                   updateState('chatHistories', (prev: any) => {
                     const history = [...(prev[selectedChatId] || [])];
-                    if (history.length > 0) {
-                      history[history.length - 1] = { ...history[history.length - 1], text: aiFullText };
+                    
+                    if (isRecalling && !hasRecalled) {
+                       for (let i = history.length - 1; i >= 0; i--) {
+                         if (history[i].role === 'ai' && !history[i].isRecalled && !history[i].id?.startsWith(baseMsgId)) {
+                           history[i] = { ...history[i], isRecalled: true, originalText: history[i].text, text: '[撤回了一条消息]' };
+                           break;
+                         }
+                       }
                     }
-                    return { ...prev, [selectedChatId]: history };
+                    
+                    const filteredHistory = history.filter(m => !m.id?.startsWith(baseMsgId));
+                    
+                    const newMsgs = parts.length > 0 ? parts.map((part, idx) => ({
+                      id: `${baseMsgId}-${idx}`,
+                      role: 'ai',
+                      text: part,
+                      quote: idx === 0 ? quote : undefined
+                    })) : [{ id: `${baseMsgId}-0`, role: 'ai', text: '...' }];
+                    
+                    return { ...prev, [selectedChatId]: [...filteredHistory, ...newMsgs] };
                   });
+                  
+                  if (isRecalling) hasRecalled = true;
                 }
               } catch (e) {
                 console.error('Error parsing SSE chunk', e);
@@ -432,7 +472,7 @@ export default function WeChatApp({
       const hist = prev[selectedChatId!] || [];
       return {
         ...prev,
-        [selectedChatId!]: hist.map((m: any) => m.id === msgId || (!m.id && hist.indexOf(m) === parseInt(msgId)) ? { ...m, isRecalled: true, originalText: m.text, text: '[撤回了一条消息]' } : m)
+        [selectedChatId!]: hist.map((m: any, i: number) => m.id === msgId || (!m.id && `${i}` === msgId) ? { ...m, isRecalled: true, originalText: m.text, text: '[撤回了一条消息]' } : m)
       };
     });
   };
@@ -443,21 +483,21 @@ export default function WeChatApp({
       const hist = prev[selectedChatId!] || [];
       return {
         ...prev,
-        [selectedChatId!]: hist.filter((m: any) => m.id !== msgId && (!m.id ? hist.indexOf(m) !== parseInt(msgId) : true))
+        [selectedChatId!]: hist.filter((m: any, i: number) => m.id !== msgId && (!m.id ? `${i}` !== msgId : true))
       };
     });
   };
 
   const handleTranslate = async (msgId: string) => {
     setContextMenu(null);
-    const msg = chatHistory.find((m: any, i: number) => m.id === msgId || (!m.id && i === parseInt(msgId)));
+    const msg = chatHistory.find((m: any, i: number) => m.id === msgId || (!m.id && `${i}` === msgId));
     if (!msg || !msg.text) return;
     
     updateState('chatHistories', (prev: any) => {
       const hist = prev[selectedChatId!] || [];
       return {
         ...prev,
-        [selectedChatId!]: hist.map((m: any) => m.id === msgId || (!m.id && hist.indexOf(m) === parseInt(msgId)) ? { ...m, isTranslating: true } : m)
+        [selectedChatId!]: hist.map((m: any, i: number) => m.id === msgId || (!m.id && `${i}` === msgId) ? { ...m, isTranslating: true } : m)
       };
     });
 
@@ -478,7 +518,7 @@ export default function WeChatApp({
         const hist = prev[selectedChatId!] || [];
         return {
           ...prev,
-          [selectedChatId!]: hist.map((m: any) => m.id === msgId || (!m.id && hist.indexOf(m) === parseInt(msgId)) ? { ...m, translation, isTranslating: false } : m)
+          [selectedChatId!]: hist.map((m: any, i: number) => m.id === msgId || (!m.id && `${i}` === msgId) ? { ...m, translation, isTranslating: false } : m)
         };
       });
     } catch (err) {
@@ -486,7 +526,7 @@ export default function WeChatApp({
         const hist = prev[selectedChatId!] || [];
         return {
           ...prev,
-          [selectedChatId!]: hist.map((m: any) => m.id === msgId || (!m.id && hist.indexOf(m) === parseInt(msgId)) ? { ...m, translation: '翻译失败', isTranslating: false } : m)
+          [selectedChatId!]: hist.map((m: any, i: number) => m.id === msgId || (!m.id && `${i}` === msgId) ? { ...m, translation: '翻译失败', isTranslating: false } : m)
         };
       });
     }
@@ -498,7 +538,7 @@ export default function WeChatApp({
       const hist = prev[selectedChatId!] || [];
       return {
         ...prev,
-        [selectedChatId!]: hist.map((m: any) => m.id === msgId || (!m.id && hist.indexOf(m) === parseInt(msgId)) ? { ...m, isGeneratingInnerVoice: true } : m)
+        [selectedChatId!]: hist.map((m: any, i: number) => m.id === msgId || (!m.id && `${i}` === msgId) ? { ...m, isGeneratingInnerVoice: true } : m)
       };
     });
     
@@ -507,7 +547,7 @@ export default function WeChatApp({
         const hist = prev[selectedChatId!] || [];
         return {
           ...prev,
-          [selectedChatId!]: hist.map((m: any) => m.id === msgId || (!m.id && hist.indexOf(m) === parseInt(msgId)) ? { ...m, innerVoice: '（其实我心里是这么想的...）', isGeneratingInnerVoice: false } : m)
+          [selectedChatId!]: hist.map((m: any, i: number) => m.id === msgId || (!m.id && `${i}` === msgId) ? { ...m, innerVoice: '（其实我心里是这么想的...）', isGeneratingInnerVoice: false } : m)
         };
       });
     }, 1500);
@@ -519,7 +559,7 @@ export default function WeChatApp({
       const hist = prev[selectedChatId!] || [];
       return {
         ...prev,
-        [selectedChatId!]: hist.map((m: any) => m.id === editModal.msgId || (!m.id && hist.indexOf(m) === parseInt(editModal.msgId)) ? { ...m, text: editModal.text } : m)
+        [selectedChatId!]: hist.map((m: any, i: number) => m.id === editModal.msgId || (!m.id && `${i}` === editModal.msgId) ? { ...m, text: editModal.text } : m)
       };
     });
     setEditModal(null);
@@ -1032,16 +1072,10 @@ export default function WeChatApp({
           ref={scrollRef}
           className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-hide relative z-10"
         >
-          {chatHistory.flatMap((msg, idx) => {
-            if (msg.isRecalled) return [{ ...msg, id: msg.id || `${idx}-0` }];
-            if (msg.role === 'user') return [{ ...msg, id: msg.id || `${idx}-0` }];
-            const parts = msg.text.split(/\n+/).map((s: string) => s.trim()).filter(Boolean);
-            if (parts.length === 0 && msg.text.length > 0) return [{ ...msg, id: msg.id || `${idx}-0` }];
-            return parts.map((part, pIdx) => ({ ...msg, text: part, id: msg.id ? `${msg.id}-${pIdx}` : `${idx}-${pIdx}`, parentId: msg.id || `${idx}` }));
-          }).map((msg) => {
+          {chatHistory.map((msg, idx) => {
             if (msg.isRecalled) {
               return (
-                <div key={msg.id} className="flex justify-center my-2">
+                <div key={msg.id || idx} className="flex justify-center my-2">
                   <span className="text-xs text-gray-400 bg-black/5 px-3 py-1 rounded-full">
                     {msg.role === 'user' ? '你' : activeChar.name}撤回了一条消息
                   </span>
@@ -1050,7 +1084,7 @@ export default function WeChatApp({
             }
             return (
             <div 
-              key={msg.id}
+              key={msg.id || idx}
               className={cn(
                 "flex items-start gap-3",
                 msg.role === 'user' ? "flex-row-reverse" : "flex-row"
@@ -1081,7 +1115,7 @@ export default function WeChatApp({
                     fontSize: `${chatSettings.bubbleFontSize}px`,
                     borderRadius: `${chatSettings.bubbleRadius}px`
                   }}
-                  onPointerDown={(e) => handlePointerDown(e, msg.parentId || msg.id, msg.role === 'user')}
+                  onPointerDown={(e) => handlePointerDown(e, msg.id || `${idx}`, msg.role === 'user')}
                   onPointerUp={handlePointerUpOrLeave}
                   onPointerLeave={handlePointerUpOrLeave}
                   onContextMenu={(e) => e.preventDefault()}
@@ -1234,12 +1268,12 @@ export default function WeChatApp({
               className="fixed z-[90] bg-white rounded-lg shadow-xl border py-1 w-36"
               style={{ left: Math.min(contextMenu.x, window.innerWidth - 150), top: contextMenu.y }}
             >
-              <button onClick={() => { navigator.clipboard.writeText(chatHistory.find((m:any, i:number) => m.id === contextMenu.msgId || (!m.id && i === parseInt(contextMenu.msgId)))?.text || ''); setContextMenu(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"><Copy className="w-4 h-4"/> 复制</button>
+              <button onClick={() => { navigator.clipboard.writeText(chatHistory.find((m:any, i:number) => m.id === contextMenu.msgId || (!m.id && `${i}` === contextMenu.msgId))?.text || ''); setContextMenu(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"><Copy className="w-4 h-4"/> 复制</button>
               <button onClick={() => { alert("转发功能开发中..."); setContextMenu(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"><Forward className="w-4 h-4"/> 转发</button>
               <button onClick={() => { alert("已收藏"); setContextMenu(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"><Star className="w-4 h-4"/> 收藏</button>
               <button onClick={() => { alert("多选模式开发中..."); setContextMenu(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"><CheckSquare className="w-4 h-4"/> 多选</button>
               <button onClick={() => { 
-                const msg = chatHistory.find((m:any, i:number) => m.id === contextMenu.msgId || (!m.id && i === parseInt(contextMenu.msgId)));
+                const msg = chatHistory.find((m:any, i:number) => m.id === contextMenu.msgId || (!m.id && `${i}` === contextMenu.msgId));
                 if (msg) setReplyingTo({ id: msg.id, text: msg.text, role: msg.role });
                 setContextMenu(null); 
               }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"><Quote className="w-4 h-4"/> 引用</button>
@@ -1248,7 +1282,7 @@ export default function WeChatApp({
               <button onClick={() => handleRecall(contextMenu.msgId)} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"><Undo2 className="w-4 h-4"/> 撤回</button>
               <button onClick={() => handleTranslate(contextMenu.msgId)} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"><Languages className="w-4 h-4"/> 翻译</button>
               <button onClick={() => { 
-                const msg = chatHistory.find((m: any, i: number) => m.id === contextMenu.msgId || (!m.id && i === parseInt(contextMenu.msgId)));
+                const msg = chatHistory.find((m: any, i: number) => m.id === contextMenu.msgId || (!m.id && `${i}` === contextMenu.msgId));
                 setEditModal({isOpen: true, msgId: contextMenu.msgId, text: msg?.text || ''}); 
                 setContextMenu(null); 
               }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"><Edit2 className="w-4 h-4"/> 编辑</button>
