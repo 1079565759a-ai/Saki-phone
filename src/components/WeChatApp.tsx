@@ -181,7 +181,7 @@ export default function WeChatApp({
 1. **人设优先**：你的用词、句式、语气、口头禅、发消息的长短节奏，都必须符合角色性格。格式为内容服务，绝不允许因为追求短句或格式而丢失角色灵魂。
 2. **禁止括号**：严禁使用括号（如()、[]、{}等）描述动作、神态、心理。
 3. **只输出气泡文字**：回复只能是消息框里的内容，无旁白。
-4. **分段发送**：必须模拟即时通讯软件的聊天习惯，将长句拆分为多条短消息发送，每条消息之间用 [LINE] 分隔。
+4. **分段发送**：如果需要连续发送多条消息，请直接换行，每次换行将作为一个独立的气泡发送。
 5. **标点习惯**：正常用标点符号，一条消息句末如果是句号一般不怎么加（表达情绪除外）会用标点符号表达情绪。
 6. **内容质量**：每条消息字数不要太少，需有一定信息量，能引导话题。会恰当地使用标点符号表达情绪（如…！？。，等等）。允许出现少许的口语化表达，但前提必须符合人设！！`;
       const finalSystemPrompt = `${baseSystemPrompt}${characterPersona}${strictRules}`;
@@ -850,7 +850,7 @@ export default function WeChatApp({
           {chatHistory.flatMap((msg, idx) => {
             if (msg.isRecalled) return [{ ...msg, id: msg.id || `${idx}-0` }];
             if (msg.role === 'user') return [{ ...msg, id: msg.id || `${idx}-0` }];
-            const parts = msg.text.split(/\[LINE\]/i).map((s: string) => s.trim()).filter(Boolean);
+            const parts = msg.text.split(/\n+/).map((s: string) => s.trim()).filter(Boolean);
             if (parts.length === 0 && msg.text.length > 0) return [{ ...msg, id: msg.id || `${idx}-0` }];
             return parts.map((part, pIdx) => ({ ...msg, text: part, id: msg.id ? `${msg.id}-${pIdx}` : `${idx}-${pIdx}`, parentId: msg.id || `${idx}` }));
           }).map((msg) => {
@@ -982,7 +982,7 @@ export default function WeChatApp({
             className="w-11 h-11 rounded-full flex items-center justify-center shadow-md active:scale-90 transition-all"
             style={{ backgroundColor: chatSettings.fontColor, color: chatSettings.headerFooterColor }}
           >
-            <Wand2 className="w-5 h-5" />
+            <Send className="w-5 h-5 ml-1" />
           </button>
         </div>
 
