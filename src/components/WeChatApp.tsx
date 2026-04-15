@@ -174,6 +174,8 @@ export default function WeChatApp({
   const [showPlusMenu, setShowPlusMenu] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, title: string, message: string, onConfirm: () => void} | null>(null);
   const [contextMenu, setContextMenu] = useState<{msgId: string, x: number, y: number, isUser: boolean} | null>(null);
+  const [isMultiSelecting, setIsMultiSelecting] = useState(false);
+  const [selectedMessages, setSelectedMessages] = useState<string[]>([]);
   const [editModal, setEditModal] = useState<{isOpen: boolean, msgId: string, text: string} | null>(null);
   const [photoModal, setPhotoModal] = useState<'none' | 'choose' | 'text-photo-input'>('none');
   const [textPhotoInput, setTextPhotoInput] = useState('');
@@ -187,7 +189,7 @@ export default function WeChatApp({
     transcript: { id: string, role: 'user' | 'ai', text: string }[];
   } | null>(null);
   const [callInputText, setCallInputText] = useState('');
-  const [replyingTo, setReplyingTo] = useState<{id: string, text: string, role: string} | null>(null);
+  const [replyingTo, setReplyingTo] = useState<{id: string, text: string, role: string, timestamp?: number} | null>(null);
   const pressTimer = useRef<NodeJS.Timeout | null>(null);
 
   const activeChar = appState.charCharacters.find((c: any) => c.id === selectedChatId);
@@ -268,7 +270,13 @@ export default function WeChatApp({
       id: Date.now().toString() + Math.random().toString(36).substring(2) + `-${idx}`,
       role: 'user',
       text: part,
-      quote: (idx === 0 && replyingTo) ? { text: replyingTo.text, role: replyingTo.role } : undefined
+      timestamp: Date.now(),
+      quote: (idx === 0 && replyingTo) ? { 
+        text: replyingTo.text, 
+        role: replyingTo.role, 
+        senderName: replyingTo.role === 'user' ? '你' : activeChar.name,
+        timestamp: replyingTo.timestamp 
+      } : undefined
     }));
     
     updateState('chatHistories', (prev: any) => ({
@@ -306,7 +314,9 @@ export default function WeChatApp({
 4. **分段发送（多气泡）**：如果需要连续发送多条消息，请直接换行。**注意：每次换行必须是一个完整、连贯的句子！绝对不能把一个完整的长句强行切分成几个没有意义的短句！** 每次换行将作为一个独立的气泡发送。请多发几个完整的句子（即多换几行，发送多条消息）。
 5. **标点习惯**：正常用标点符号，一条消息句末如果是句号一般不怎么加（表达情绪除外）会用标点符号表达情绪。
 6. **内容质量与字数**：**每条消息（每个气泡）的字数绝对不能太少！** 必须有充足的信息量，能引导话题。会恰当地使用标点符号表达情绪（如…！？。，等等）。允许出现少许的口语化表达，但前提必须符合人设！！
-7. **特殊功能**：
+7. **严禁单字刷屏**：绝对不允许重复发送只有一个字的消息气泡（例如一直发“乖”），除非用户明确要求或者这是该角色极度核心的设定。
+8. **强烈的情感波动**：你的情绪波动必须浓烈、饱满，拒绝平淡的AI机器人口吻，要像真人一样有强烈的情感起伏。
+9. **特殊功能**：
 - 如果你想撤回自己上一条发出的消息，请单独回复 \`[撤回]\`。
 - 如果你想引用对方的话，请在回复开头使用 \`[引用:对方的话]\`，然后换行写你的回复。`;
       const finalSystemPrompt = `${baseSystemPrompt}${characterPersona}${strictRules}`;
@@ -385,7 +395,7 @@ export default function WeChatApp({
                     if (isRecalling && !hasRecalled) {
                        for (let i = history.length - 1; i >= 0; i--) {
                          if (history[i].role === 'ai' && !history[i].isRecalled && !history[i].id?.startsWith(baseMsgId)) {
-                           history[i] = { ...history[i], isRecalled: true, originalText: history[i].text, text: '[撤回了一条消息]' };
+                           history[i] = { ...history[i], isRecalled: true, originalText: history[i].text, text: `[${activeChar.name}撤回了一条消息: "${history[i].text}"]` };
                            break;
                          }
                        }
@@ -397,8 +407,9 @@ export default function WeChatApp({
                       id: `${baseMsgId}-${idx}`,
                       role: 'ai',
                       text: part,
+                      timestamp: Date.now(),
                       quote: idx === 0 ? quote : undefined
-                    })) : [{ id: `${baseMsgId}-0`, role: 'ai', text: '...' }];
+                    })) : [{ id: `${baseMsgId}-0`, role: 'ai', text: '...', timestamp: Date.now() }];
                     
                     return { ...prev, [selectedChatId]: [...filteredHistory, ...newMsgs] };
                   });
@@ -472,7 +483,7 @@ export default function WeChatApp({
       const hist = prev[selectedChatId!] || [];
       return {
         ...prev,
-        [selectedChatId!]: hist.map((m: any, i: number) => m.id === msgId || (!m.id && `${i}` === msgId) ? { ...m, isRecalled: true, originalText: m.text, text: '[撤回了一条消息]' } : m)
+        [selectedChatId!]: hist.map((m: any, i: number) => m.id === msgId || (!m.id && `${i}` === msgId) ? { ...m, isRecalled: true, originalText: m.text, text: `[${m.role === 'user' ? '你' : activeChar?.name}撤回了一条消息: "${m.text}"]` } : m)
       };
     });
   };
@@ -1090,6 +1101,22 @@ export default function WeChatApp({
                 msg.role === 'user' ? "flex-row-reverse" : "flex-row"
               )}
             >
+              {isMultiSelecting && (
+                <div 
+                  className="shrink-0 flex items-center justify-center pt-2 cursor-pointer"
+                  onClick={() => {
+                    const msgId = msg.id || `${idx}`;
+                    setSelectedMessages(prev => prev.includes(msgId) ? prev.filter(id => id !== msgId) : [...prev, msgId]);
+                  }}
+                >
+                  <div className={cn(
+                    "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors",
+                    selectedMessages.includes(msg.id || `${idx}`) ? "bg-green-500 border-green-500" : "border-gray-300"
+                  )}>
+                    {selectedMessages.includes(msg.id || `${idx}`) && <CheckSquare className="w-3 h-3 text-white" />}
+                  </div>
+                </div>
+              )}
               {/* Avatar */}
               <div className={cn("shrink-0 relative", avatarSizeClass)}>
                 <div className={cn("w-full h-full overflow-hidden bg-gray-100 shadow-sm", avatarShapeClass)}>
@@ -1108,12 +1135,15 @@ export default function WeChatApp({
               {/* Bubble */}
               <div className="relative max-w-[75%]">
                 <div 
-                  className="shadow-sm relative z-10 px-3 py-1.5 cursor-pointer"
+                  className="shadow-sm relative z-10 px-3 py-1.5 cursor-pointer select-none"
                   style={{
-                    backgroundColor: hexToRgba(msg.role === 'user' ? chatSettings.myBubbleColor : chatSettings.otherBubbleColor, chatSettings.bubbleOpacity),
+                    WebkitUserSelect: 'none',
+                    backgroundColor: msg.type === 'text-photo' ? 'transparent' : hexToRgba(msg.role === 'user' ? chatSettings.myBubbleColor : chatSettings.otherBubbleColor, chatSettings.bubbleOpacity),
                     color: chatSettings.fontColor,
                     fontSize: `${chatSettings.bubbleFontSize}px`,
-                    borderRadius: `${chatSettings.bubbleRadius}px`
+                    borderRadius: msg.type === 'text-photo' ? '0' : `${chatSettings.bubbleRadius}px`,
+                    boxShadow: msg.type === 'text-photo' ? 'none' : undefined,
+                    padding: msg.type === 'text-photo' ? '0' : undefined
                   }}
                   onPointerDown={(e) => handlePointerDown(e, msg.id || `${idx}`, msg.role === 'user')}
                   onPointerUp={handlePointerUpOrLeave}
@@ -1137,8 +1167,12 @@ export default function WeChatApp({
                   ) : (
                     <div className="relative z-10 break-words whitespace-pre-wrap leading-relaxed">
                       {msg.quote && (
-                        <div className="bg-black/5 rounded p-1 mb-1 text-[10px] opacity-70 border-l-2 border-black/20 truncate max-w-full">
-                          {msg.quote.role === 'user' ? '你' : activeChar.name}: {msg.quote.text}
+                        <div className="bg-black/5 rounded p-1.5 mb-1.5 text-[11px] opacity-80 border-l-2 border-black/20 flex flex-col gap-0.5">
+                          <div className="flex items-center justify-between opacity-70">
+                            <span>{msg.quote.senderName || (msg.quote.role === 'user' ? '你' : activeChar.name)}</span>
+                            {msg.quote.timestamp && <span>{new Date(msg.quote.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                          </div>
+                          <div className="truncate max-w-full">{msg.quote.text}</div>
                         </div>
                       )}
                       {msg.text}
@@ -1172,55 +1206,86 @@ export default function WeChatApp({
         </div>
 
         {/* Chat Input */}
-        <div className="flex flex-col shrink-0 relative z-20">
-          {replyingTo && (
-            <div className="px-4 py-2 bg-gray-50/90 backdrop-blur-sm border-t flex items-center justify-between text-xs text-gray-500">
-              <div className="truncate flex-1">
-                回复 {replyingTo.role === 'user' ? '你' : activeChar.name}: {replyingTo.text}
+        {!isMultiSelecting ? (
+          <div className="flex flex-col shrink-0 relative z-20">
+            {replyingTo && (
+              <div className="px-4 py-2 bg-gray-50/90 backdrop-blur-sm border-t flex items-center justify-between text-xs text-gray-500">
+                <div className="truncate flex-1">
+                  回复 {replyingTo.role === 'user' ? '你' : activeChar.name}: {replyingTo.text}
+                </div>
+                <button onClick={() => setReplyingTo(null)} className="p-1 hover:bg-black/5 rounded-full"><X className="w-4 h-4" /></button>
               </div>
-              <button onClick={() => setReplyingTo(null)} className="p-1 hover:bg-black/5 rounded-full"><X className="w-4 h-4" /></button>
-            </div>
-          )}
-          <div 
-            className="p-4 border-t flex items-center gap-3"
-            style={{ 
-              backgroundColor: `${chatSettings.headerFooterColor}e6`,
-              borderColor: `${chatSettings.fontColor}1a`
-            }}
-          >
-          <button 
-            onClick={() => setShowPlusMenu(!showPlusMenu)}
-            className="p-2 hover:bg-black/5 rounded-full transition-all" 
-            style={{ color: chatSettings.fontColor }}
-          >
-            <Plus className={cn("w-6 h-6 opacity-70 transition-transform", showPlusMenu && "rotate-45")} />
-          </button>
-          <div 
-            className="flex-1 rounded-full px-5 py-2.5 flex items-center shadow-inner"
-            style={{ backgroundColor: `${chatSettings.fontColor}0d` }} // 5% opacity of font color for input bg
-          >
-            <input 
-              type="text"
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-              placeholder="发送消息..."
-              className="flex-1 bg-transparent border-none focus:outline-none text-sm"
+            )}
+            <div 
+              className="p-4 border-t flex items-center gap-3"
+              style={{ 
+                backgroundColor: `${chatSettings.headerFooterColor}e6`,
+                borderColor: `${chatSettings.fontColor}1a`
+              }}
+            >
+            <button 
+              onClick={() => setShowPlusMenu(!showPlusMenu)}
+              className="p-2 hover:bg-black/5 rounded-full transition-all" 
               style={{ color: chatSettings.fontColor }}
-            />
-            <button className="p-1.5 transition-colors" style={{ color: chatSettings.fontColor }}>
-              <Smile className="w-5 h-5 opacity-70" />
+            >
+              <Plus className={cn("w-6 h-6 opacity-70 transition-transform", showPlusMenu && "rotate-45")} />
+            </button>
+            <div 
+              className="flex-1 rounded-full px-5 py-2.5 flex items-center shadow-inner"
+              style={{ backgroundColor: `${chatSettings.fontColor}0d` }} // 5% opacity of font color for input bg
+            >
+              <input 
+                type="text"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                placeholder="发送消息..."
+                className="flex-1 bg-transparent border-none focus:outline-none text-sm"
+                style={{ color: chatSettings.fontColor }}
+              />
+              <button className="p-1.5 transition-colors" style={{ color: chatSettings.fontColor }}>
+                <Smile className="w-5 h-5 opacity-70" />
+              </button>
+            </div>
+            <button 
+              onClick={handleTriggerAIReply}
+              className="w-11 h-11 rounded-full flex items-center justify-center shadow-md active:scale-90 transition-all"
+              style={{ backgroundColor: chatSettings.fontColor, color: chatSettings.headerFooterColor }}
+            >
+              <Send className="w-5 h-5 ml-1" />
             </button>
           </div>
-          <button 
-            onClick={handleTriggerAIReply}
-            className="w-11 h-11 rounded-full flex items-center justify-center shadow-md active:scale-90 transition-all"
-            style={{ backgroundColor: chatSettings.fontColor, color: chatSettings.headerFooterColor }}
-          >
-            <Send className="w-5 h-5 ml-1" />
-          </button>
-        </div>
-        </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-around p-4 bg-gray-50/90 backdrop-blur-md border-t shrink-0 relative z-20">
+            <button onClick={() => { alert("转发功能开发中..."); setIsMultiSelecting(false); setSelectedMessages([]); }} className="flex flex-col items-center gap-1 text-gray-600">
+              <Forward className="w-6 h-6" />
+              <span className="text-xs">转发</span>
+            </button>
+            <button onClick={() => { alert("已收藏"); setIsMultiSelecting(false); setSelectedMessages([]); }} className="flex flex-col items-center gap-1 text-gray-600">
+              <Star className="w-6 h-6" />
+              <span className="text-xs">收藏</span>
+            </button>
+            <button onClick={() => {
+              updateState('chatHistories', (prev: any) => {
+                const hist = prev[selectedChatId!] || [];
+                return {
+                  ...prev,
+                  [selectedChatId!]: hist.filter((m: any, i: number) => !selectedMessages.includes(m.id || `${i}`))
+                };
+              });
+              setIsMultiSelecting(false);
+              setSelectedMessages([]);
+            }} className="flex flex-col items-center gap-1 text-red-500">
+              <Trash2 className="w-6 h-6" />
+              <span className="text-xs">删除</span>
+            </button>
+            <button onClick={() => { setIsMultiSelecting(false); setSelectedMessages([]); }} className="flex flex-col items-center gap-1 text-gray-600">
+              <X className="w-6 h-6" />
+              <span className="text-xs">取消</span>
+            </button>
+          </div>
+        )}
 
         {/* Plus Menu Panel */}
         <AnimatePresence>
@@ -1234,6 +1299,7 @@ export default function WeChatApp({
             >
               <div className="p-6 grid grid-cols-4 gap-y-6 gap-x-4">
                 {[
+                  { icon: RefreshCw, label: '重回', onClick: handleRegenerate },
                   { icon: ImageIcon, label: '照片', onClick: () => setPhotoModal('choose') },
                   { icon: Camera, label: '拍摄', onClick: () => {} },
                   { icon: Video, label: '视频通话', onClick: () => { setShowPlusMenu(false); setCallChooseModal(true); } },
@@ -1244,9 +1310,7 @@ export default function WeChatApp({
                   { icon: Star, label: '收藏', onClick: () => {} },
                   { icon: UserSquare, label: '个人名片', onClick: () => {} },
                   { icon: File, label: '文件', onClick: () => {} },
-                  { icon: Ticket, label: '卡券', onClick: () => {} },
                   { icon: Music, label: '音乐', onClick: () => {} },
-                  { icon: RefreshCw, label: '重回', onClick: handleRegenerate },
                 ].map((item, i) => (
                   <div key={i} className="flex flex-col items-center gap-2 cursor-pointer group" onClick={item.onClick}>
                     <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm group-hover:bg-gray-100 transition-colors">
@@ -1263,30 +1327,56 @@ export default function WeChatApp({
         {/* Context Menu */}
         {contextMenu && (
           <>
-            <div className="fixed inset-0 z-[80]" onClick={() => setContextMenu(null)} />
+            <div className="fixed inset-0 z-[80]" onClick={() => setContextMenu(null)} onContextMenu={(e) => {e.preventDefault(); setContextMenu(null);}} />
             <div 
-              className="fixed z-[90] bg-white rounded-lg shadow-xl border py-1 w-36"
-              style={{ left: Math.min(contextMenu.x, window.innerWidth - 150), top: contextMenu.y }}
+              className="fixed z-[90] bg-white/90 backdrop-blur-md rounded-2xl shadow-xl border border-white/20 p-2 w-64"
+              style={{ 
+                left: Math.max(10, Math.min(contextMenu.x - 120, window.innerWidth - 260)), 
+                top: Math.max(10, contextMenu.y - 140) 
+              }}
             >
-              <button onClick={() => { navigator.clipboard.writeText(chatHistory.find((m:any, i:number) => m.id === contextMenu.msgId || (!m.id && `${i}` === contextMenu.msgId))?.text || ''); setContextMenu(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"><Copy className="w-4 h-4"/> 复制</button>
-              <button onClick={() => { alert("转发功能开发中..."); setContextMenu(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"><Forward className="w-4 h-4"/> 转发</button>
-              <button onClick={() => { alert("已收藏"); setContextMenu(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"><Star className="w-4 h-4"/> 收藏</button>
-              <button onClick={() => { alert("多选模式开发中..."); setContextMenu(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"><CheckSquare className="w-4 h-4"/> 多选</button>
-              <button onClick={() => { 
-                const msg = chatHistory.find((m:any, i:number) => m.id === contextMenu.msgId || (!m.id && `${i}` === contextMenu.msgId));
-                if (msg) setReplyingTo({ id: msg.id, text: msg.text, role: msg.role });
-                setContextMenu(null); 
-              }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"><Quote className="w-4 h-4"/> 引用</button>
-              <button onClick={() => handleInnerVoice(contextMenu.msgId)} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"><MessageCircleHeart className="w-4 h-4"/> 心声</button>
-              <div className="h-px bg-gray-100 my-1" />
-              <button onClick={() => handleRecall(contextMenu.msgId)} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"><Undo2 className="w-4 h-4"/> 撤回</button>
-              <button onClick={() => handleTranslate(contextMenu.msgId)} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"><Languages className="w-4 h-4"/> 翻译</button>
-              <button onClick={() => { 
-                const msg = chatHistory.find((m: any, i: number) => m.id === contextMenu.msgId || (!m.id && `${i}` === contextMenu.msgId));
-                setEditModal({isOpen: true, msgId: contextMenu.msgId, text: msg?.text || ''}); 
-                setContextMenu(null); 
-              }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"><Edit2 className="w-4 h-4"/> 编辑</button>
-              <button onClick={() => handleDelete(contextMenu.msgId)} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 text-red-600 flex items-center gap-2"><Trash2 className="w-4 h-4"/> 删除</button>
+              <div className="grid grid-cols-4 gap-2">
+                <button onClick={() => { alert("转发功能开发中..."); setContextMenu(null); }} className="flex flex-col items-center justify-center gap-1 p-2 rounded-xl hover:bg-black/5 transition-colors">
+                  <div className="w-10 h-10 bg-white rounded-full shadow-sm flex items-center justify-center"><Forward className="w-5 h-5 text-gray-700"/></div>
+                  <span className="text-[10px] text-gray-600">转发</span>
+                </button>
+                <button onClick={() => { alert("已收藏"); setContextMenu(null); }} className="flex flex-col items-center justify-center gap-1 p-2 rounded-xl hover:bg-black/5 transition-colors">
+                  <div className="w-10 h-10 bg-white rounded-full shadow-sm flex items-center justify-center"><Star className="w-5 h-5 text-gray-700"/></div>
+                  <span className="text-[10px] text-gray-600">收藏</span>
+                </button>
+                <button onClick={() => { 
+                  setIsMultiSelecting(true); 
+                  setSelectedMessages([contextMenu.msgId]); 
+                  setContextMenu(null); 
+                }} className="flex flex-col items-center justify-center gap-1 p-2 rounded-xl hover:bg-black/5 transition-colors">
+                  <div className="w-10 h-10 bg-white rounded-full shadow-sm flex items-center justify-center"><CheckSquare className="w-5 h-5 text-gray-700"/></div>
+                  <span className="text-[10px] text-gray-600">多选</span>
+                </button>
+                <button onClick={() => { 
+                  const msg = chatHistory.find((m:any, i:number) => m.id === contextMenu.msgId || (!m.id && `${i}` === contextMenu.msgId));
+                  if (msg) setReplyingTo({ id: msg.id, text: msg.text, role: msg.role, timestamp: msg.timestamp });
+                  setContextMenu(null); 
+                }} className="flex flex-col items-center justify-center gap-1 p-2 rounded-xl hover:bg-black/5 transition-colors">
+                  <div className="w-10 h-10 bg-white rounded-full shadow-sm flex items-center justify-center"><Quote className="w-5 h-5 text-gray-700"/></div>
+                  <span className="text-[10px] text-gray-600">引用</span>
+                </button>
+                <button onClick={() => handleInnerVoice(contextMenu.msgId)} className="flex flex-col items-center justify-center gap-1 p-2 rounded-xl hover:bg-black/5 transition-colors">
+                  <div className="w-10 h-10 bg-white rounded-full shadow-sm flex items-center justify-center"><MessageCircleHeart className="w-5 h-5 text-gray-700"/></div>
+                  <span className="text-[10px] text-gray-600">心声</span>
+                </button>
+                <button onClick={() => handleRecall(contextMenu.msgId)} className="flex flex-col items-center justify-center gap-1 p-2 rounded-xl hover:bg-black/5 transition-colors">
+                  <div className="w-10 h-10 bg-white rounded-full shadow-sm flex items-center justify-center"><Undo2 className="w-5 h-5 text-gray-700"/></div>
+                  <span className="text-[10px] text-gray-600">撤回</span>
+                </button>
+                <button onClick={() => handleTranslate(contextMenu.msgId)} className="flex flex-col items-center justify-center gap-1 p-2 rounded-xl hover:bg-black/5 transition-colors">
+                  <div className="w-10 h-10 bg-white rounded-full shadow-sm flex items-center justify-center"><Languages className="w-5 h-5 text-gray-700"/></div>
+                  <span className="text-[10px] text-gray-600">翻译</span>
+                </button>
+                <button onClick={() => handleDelete(contextMenu.msgId)} className="flex flex-col items-center justify-center gap-1 p-2 rounded-xl hover:bg-black/5 transition-colors">
+                  <div className="w-10 h-10 bg-white rounded-full shadow-sm flex items-center justify-center"><Trash2 className="w-5 h-5 text-red-500"/></div>
+                  <span className="text-[10px] text-gray-600">删除</span>
+                </button>
+              </div>
             </div>
           </>
         )}
