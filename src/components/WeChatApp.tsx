@@ -35,7 +35,8 @@ import {
   Forward,
   CheckSquare,
   Quote,
-  MessageCircleHeart
+  MessageCircleHeart,
+  CornerRightUp
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import LoginScreen from './LoginScreen';
@@ -272,6 +273,7 @@ export default function WeChatApp({
       text: part,
       timestamp: Date.now(),
       quote: (idx === 0 && replyingTo) ? { 
+        id: replyingTo.id,
         text: replyingTo.text, 
         role: replyingTo.role, 
         senderName: replyingTo.role === 'user' ? '你' : activeChar.name,
@@ -377,7 +379,15 @@ export default function WeChatApp({
                   let quoteMatch = displayContent.match(/\[引用:(.*?)\]/);
                   let quote = undefined;
                   if (quoteMatch) {
-                    quote = { role: 'user', text: quoteMatch[1] };
+                    const quotedText = quoteMatch[1];
+                    const foundMsg = historyToUse.slice().reverse().find(m => m.text.includes(quotedText) || quotedText.includes(m.text));
+                    quote = { 
+                      id: foundMsg?.id,
+                      role: foundMsg?.role || 'user', 
+                      text: quotedText,
+                      senderName: foundMsg ? (foundMsg.role === 'user' ? '你' : activeChar.name) : '你',
+                      timestamp: foundMsg?.timestamp || Date.now()
+                    };
                     displayContent = displayContent.replace(quoteMatch[0], '').trim();
                   }
                   
@@ -1083,16 +1093,20 @@ export default function WeChatApp({
           {chatHistory.map((msg, idx) => {
             if (msg.isRecalled) {
               return (
-                <div key={msg.id || idx} className="flex justify-center my-2">
-                  <span className="text-xs text-gray-400 bg-black/5 px-3 py-1 rounded-full">
-                    {msg.role === 'user' ? '你' : activeChar.name}撤回了一条消息
+                <div key={msg.id || idx} id={`msg-${msg.id || idx}`} className="flex justify-center my-2">
+                  <span className="text-xs text-gray-400 bg-black/5 px-3 py-1 rounded-full max-w-[80%] text-center break-words">
+                    {msg.text}
                   </span>
                 </div>
               );
             }
             return (
-            <div 
+            <motion.div 
               key={msg.id || idx}
+              id={`msg-${msg.id || idx}`}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
               className={cn(
                 "flex items-start gap-3",
                 msg.role === 'user' ? "flex-row-reverse" : "flex-row"
@@ -1164,10 +1178,23 @@ export default function WeChatApp({
                   ) : (
                     <div className="relative z-10 break-words whitespace-pre-wrap leading-relaxed">
                       {msg.quote && (
-                        <div className="bg-black/5 rounded p-1.5 mb-1.5 text-[11px] opacity-80 border-l-2 border-black/20 flex flex-col gap-0.5">
-                          <div className="flex items-center justify-between opacity-70">
-                            <span>{msg.quote.senderName || (msg.quote.role === 'user' ? '你' : activeChar.name)}</span>
-                            {msg.quote.timestamp && <span>{new Date(msg.quote.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                        <div 
+                          className="bg-black/5 rounded p-2 mb-1.5 opacity-80 border-l-2 border-black/20 flex flex-col gap-0.5 cursor-pointer hover:bg-black/10 transition-colors"
+                          style={{ fontSize: '0.85em' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (msg.quote.id) {
+                              const el = document.getElementById(`msg-${msg.quote.id}`);
+                              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                          }}
+                        >
+                          <div className="flex items-center justify-between opacity-70 mb-0.5">
+                            <div className="flex items-center gap-1.5">
+                              <span>{msg.quote.senderName || (msg.quote.role === 'user' ? '你' : activeChar.name)}</span>
+                              {msg.quote.timestamp && <span className="text-[0.85em]">{new Date(msg.quote.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                            </div>
+                            <CornerRightUp className="w-3.5 h-3.5" />
                           </div>
                           <div className="truncate max-w-full">{msg.quote.text}</div>
                         </div>
@@ -1184,12 +1211,12 @@ export default function WeChatApp({
                         </div>
                       )}
                       {msg.isGeneratingInnerVoice && (
-                        <div className="mt-2 pt-2 border-t border-black/10 text-xs text-purple-600 italic flex items-center gap-1">
+                        <div className="mt-2 pt-2 border-t border-black/10 text-gray-400 italic flex items-center gap-1" style={{ fontSize: '0.85em' }}>
                           <RefreshCw className="w-3 h-3 animate-spin" /> 正在倾听心声...
                         </div>
                       )}
                       {msg.innerVoice && (
-                        <div className="mt-2 pt-2 border-t border-black/10 text-xs text-purple-600 italic flex items-start gap-1">
+                        <div className="mt-2 pt-2 border-t border-black/10 text-gray-400 italic flex items-start gap-1" style={{ fontSize: '0.85em' }}>
                           <MessageCircleHeart className="w-3 h-3 mt-0.5 shrink-0" />
                           <span>{msg.innerVoice}</span>
                         </div>
@@ -1198,7 +1225,7 @@ export default function WeChatApp({
                   )}
                 </div>
               </div>
-            </div>
+            </motion.div>
           )})}
         </div>
 
