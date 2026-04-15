@@ -19,7 +19,23 @@ import {
   Trash2,
   Edit2,
   Languages,
-  Undo2
+  Undo2,
+  Camera,
+  Video,
+  MapPin,
+  Wallet,
+  Gift,
+  ArrowRightLeft,
+  Star,
+  UserSquare,
+  File,
+  Ticket,
+  Music,
+  Copy,
+  Forward,
+  CheckSquare,
+  Quote,
+  MessageCircleHeart
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import LoginScreen from './LoginScreen';
@@ -89,6 +105,49 @@ const hexToRgba = (hex: string, opacity: number) => {
   return `rgba(${r}, ${g}, ${b}, ${opacity / 100})`;
 };
 
+const TextPhotoBubble = ({ text, isUser, chatSettings }: { text: string, isUser: boolean, chatSettings: ChatSettings }) => {
+  const [isFlipped, setIsFlipped] = useState(false);
+  return (
+    <div 
+      className="relative w-40 h-56 cursor-pointer"
+      style={{ perspective: '1000px' }}
+      onClick={() => setIsFlipped(!isFlipped)}
+    >
+      <motion.div
+        className="w-full h-full relative transition-all duration-500"
+        style={{ transformStyle: 'preserve-3d' }}
+        initial={false}
+        animate={{ rotateY: isFlipped ? 180 : 0 }}
+      >
+        {/* Front (Looks like a photo) */}
+        <div 
+          className="absolute inset-0 rounded-xl overflow-hidden border-2 flex items-center justify-center bg-gray-100"
+          style={{ 
+            borderColor: isUser ? chatSettings.myBubbleColor : chatSettings.otherBubbleColor,
+            backfaceVisibility: 'hidden'
+          }}
+        >
+          <ImageIcon className="w-12 h-12 text-gray-300" />
+          <div className="absolute bottom-2 right-2 bg-black/50 text-white text-[10px] px-2 py-0.5 rounded-full">点击查看</div>
+        </div>
+        {/* Back (Text description) */}
+        <div 
+          className="absolute inset-0 rounded-xl overflow-hidden border-2 p-3 overflow-y-auto"
+          style={{ 
+            borderColor: isUser ? chatSettings.myBubbleColor : chatSettings.otherBubbleColor,
+            backgroundColor: isUser ? chatSettings.myBubbleColor : chatSettings.otherBubbleColor,
+            color: chatSettings.fontColor,
+            transform: 'rotateY(180deg)',
+            backfaceVisibility: 'hidden'
+          }}
+        >
+          <p className="text-sm whitespace-pre-wrap">{text}</p>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
 export default function WeChatApp({ 
   onClose, 
   isFullscreen, 
@@ -112,6 +171,19 @@ export default function WeChatApp({
   const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, title: string, message: string, onConfirm: () => void} | null>(null);
   const [contextMenu, setContextMenu] = useState<{msgId: string, x: number, y: number, isUser: boolean} | null>(null);
   const [editModal, setEditModal] = useState<{isOpen: boolean, msgId: string, text: string} | null>(null);
+  const [photoModal, setPhotoModal] = useState<'none' | 'choose' | 'text-photo-input'>('none');
+  const [textPhotoInput, setTextPhotoInput] = useState('');
+  const [callChooseModal, setCallChooseModal] = useState(false);
+  const [callState, setCallState] = useState<{
+    isActive: boolean;
+    type: 'voice' | 'video';
+    status: 'dialing' | 'connected';
+    isMuted: boolean;
+    isSpeaker: boolean;
+    transcript: { id: string, role: 'user' | 'ai', text: string }[];
+  } | null>(null);
+  const [callInputText, setCallInputText] = useState('');
+  const [replyingTo, setReplyingTo] = useState<{id: string, text: string, role: string} | null>(null);
   const pressTimer = useRef<NodeJS.Timeout | null>(null);
 
   const activeChar = appState.charCharacters.find((c: any) => c.id === selectedChatId);
@@ -170,10 +242,27 @@ export default function WeChatApp({
     }
   }, [selectedChatId]);
 
+  const handleSendTextPhoto = () => {
+    if (!textPhotoInput.trim() || !selectedChatId) return;
+    const newMsg = { id: Date.now().toString() + Math.random().toString(36).substring(2), role: 'user', text: textPhotoInput, type: 'text-photo' };
+    updateState('chatHistories', (prev: any) => ({
+      ...prev,
+      [selectedChatId]: [...(prev[selectedChatId] || []), newMsg]
+    }));
+    setTextPhotoInput('');
+    setPhotoModal('none');
+    setShowPlusMenu(false);
+  };
+
   const handleSendMessage = () => {
     if (!inputText.trim() || !selectedChatId || !activeChar) return;
 
-    const newMsg = { id: Date.now().toString() + Math.random().toString(36).substring(2), role: 'user', text: inputText };
+    const newMsg = { 
+      id: Date.now().toString() + Math.random().toString(36).substring(2), 
+      role: 'user', 
+      text: inputText,
+      quote: replyingTo ? { text: replyingTo.text, role: replyingTo.role } : undefined
+    };
     
     updateState('chatHistories', (prev: any) => ({
       ...prev,
@@ -181,6 +270,7 @@ export default function WeChatApp({
     }));
     
     setInputText('');
+    setReplyingTo(null);
   };
 
   const triggerAI = async (historyToUse: any[]) => {
@@ -400,6 +490,27 @@ export default function WeChatApp({
         };
       });
     }
+  };
+
+  const handleInnerVoice = async (msgId: string) => {
+    setContextMenu(null);
+    updateState('chatHistories', (prev: any) => {
+      const hist = prev[selectedChatId!] || [];
+      return {
+        ...prev,
+        [selectedChatId!]: hist.map((m: any) => m.id === msgId || (!m.id && hist.indexOf(m) === parseInt(msgId)) ? { ...m, isGeneratingInnerVoice: true } : m)
+      };
+    });
+    
+    setTimeout(() => {
+      updateState('chatHistories', (prev: any) => {
+        const hist = prev[selectedChatId!] || [];
+        return {
+          ...prev,
+          [selectedChatId!]: hist.map((m: any) => m.id === msgId || (!m.id && hist.indexOf(m) === parseInt(msgId)) ? { ...m, innerVoice: '（其实我心里是这么想的...）', isGeneratingInnerVoice: false } : m)
+        };
+      });
+    }, 1500);
   };
 
   const saveEdit = () => {
@@ -976,64 +1087,79 @@ export default function WeChatApp({
                   onContextMenu={(e) => e.preventDefault()}
                 >
                   {/* Bubble Tail */}
-                  <div 
-                    className="absolute top-1/2 -translate-y-1/2 w-0 h-0 border-y-[6px] border-y-transparent z-0"
-                    style={{
-                      [msg.role === 'user' ? 'right' : 'left']: '-5px',
-                      [msg.role === 'user' ? 'borderLeftWidth' : 'borderRightWidth']: '6px',
-                      [msg.role === 'user' ? 'borderLeftColor' : 'borderRightColor']: hexToRgba(msg.role === 'user' ? chatSettings.myBubbleColor : chatSettings.otherBubbleColor, chatSettings.bubbleOpacity),
-                    }}
-                  />
-                  <div className="relative z-10 break-words whitespace-pre-wrap leading-relaxed">
-                    {msg.text}
-                    {msg.isTranslating && (
-                      <div className="mt-2 pt-2 border-t border-black/10 text-xs opacity-70 flex items-center gap-1">
-                        <RefreshCw className="w-3 h-3 animate-spin" /> 翻译中...
-                      </div>
-                    )}
-                    {msg.translation && (
-                      <div className="mt-2 pt-2 border-t border-black/10 text-sm opacity-90">
-                        {msg.translation}
-                      </div>
-                    )}
-                  </div>
+                  {msg.type !== 'text-photo' && (
+                    <div 
+                      className="absolute top-1/2 -translate-y-1/2 w-0 h-0 border-y-[6px] border-y-transparent z-0"
+                      style={{
+                        [msg.role === 'user' ? 'right' : 'left']: '-5px',
+                        [msg.role === 'user' ? 'borderLeftWidth' : 'borderRightWidth']: '6px',
+                        [msg.role === 'user' ? 'borderLeftColor' : 'borderRightColor']: hexToRgba(msg.role === 'user' ? chatSettings.myBubbleColor : chatSettings.otherBubbleColor, chatSettings.bubbleOpacity),
+                      }}
+                    />
+                  )}
+                  
+                  {msg.type === 'text-photo' ? (
+                    <TextPhotoBubble text={msg.text} isUser={msg.role === 'user'} chatSettings={chatSettings} />
+                  ) : (
+                    <div className="relative z-10 break-words whitespace-pre-wrap leading-relaxed">
+                      {msg.quote && (
+                        <div className="bg-black/5 rounded p-1 mb-1 text-[10px] opacity-70 border-l-2 border-black/20 truncate max-w-full">
+                          {msg.quote.role === 'user' ? '你' : activeChar.name}: {msg.quote.text}
+                        </div>
+                      )}
+                      {msg.text}
+                      {msg.isTranslating && (
+                        <div className="mt-2 pt-2 border-t border-black/10 text-xs opacity-70 flex items-center gap-1">
+                          <RefreshCw className="w-3 h-3 animate-spin" /> 翻译中...
+                        </div>
+                      )}
+                      {msg.translation && (
+                        <div className="mt-2 pt-2 border-t border-black/10 text-sm opacity-90">
+                          {msg.translation}
+                        </div>
+                      )}
+                      {msg.isGeneratingInnerVoice && (
+                        <div className="mt-2 pt-2 border-t border-black/10 text-xs text-purple-600 italic flex items-center gap-1">
+                          <RefreshCw className="w-3 h-3 animate-spin" /> 正在倾听心声...
+                        </div>
+                      )}
+                      {msg.innerVoice && (
+                        <div className="mt-2 pt-2 border-t border-black/10 text-xs text-purple-600 italic flex items-start gap-1">
+                          <MessageCircleHeart className="w-3 h-3 mt-0.5 shrink-0" />
+                          <span>{msg.innerVoice}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
           )})}
         </div>
 
-        {/* Plus Menu Popup */}
-        <AnimatePresence>
-          {showPlusMenu && (
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
-              className="absolute bottom-[70px] left-4 bg-white rounded-xl shadow-lg border p-2 flex gap-2 z-50"
-            >
-              <button onClick={handleRegenerate} className="flex flex-col items-center p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                <RefreshCw className="w-6 h-6 text-gray-600 mb-1" />
-                <span className="text-xs text-gray-600">重回</span>
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         {/* Chat Input */}
-        <div 
-          className="p-4 border-t flex items-center gap-3 relative z-10"
-          style={{ 
-            backgroundColor: `${chatSettings.headerFooterColor}e6`,
-            borderColor: `${chatSettings.fontColor}1a`
-          }}
-        >
+        <div className="flex flex-col shrink-0 relative z-20">
+          {replyingTo && (
+            <div className="px-4 py-2 bg-gray-50/90 backdrop-blur-sm border-t flex items-center justify-between text-xs text-gray-500">
+              <div className="truncate flex-1">
+                回复 {replyingTo.role === 'user' ? '你' : activeChar.name}: {replyingTo.text}
+              </div>
+              <button onClick={() => setReplyingTo(null)} className="p-1 hover:bg-black/5 rounded-full"><X className="w-4 h-4" /></button>
+            </div>
+          )}
+          <div 
+            className="p-4 border-t flex items-center gap-3"
+            style={{ 
+              backgroundColor: `${chatSettings.headerFooterColor}e6`,
+              borderColor: `${chatSettings.fontColor}1a`
+            }}
+          >
           <button 
             onClick={() => setShowPlusMenu(!showPlusMenu)}
             className="p-2 hover:bg-black/5 rounded-full transition-all" 
             style={{ color: chatSettings.fontColor }}
           >
-            <Plus className="w-6 h-6 opacity-70" />
+            <Plus className={cn("w-6 h-6 opacity-70 transition-transform", showPlusMenu && "rotate-45")} />
           </button>
           <div 
             className="flex-1 rounded-full px-5 py-2.5 flex items-center shadow-inner"
@@ -1060,15 +1186,65 @@ export default function WeChatApp({
             <Send className="w-5 h-5 ml-1" />
           </button>
         </div>
+        </div>
+
+        {/* Plus Menu Panel */}
+        <AnimatePresence>
+          {showPlusMenu && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="shrink-0 border-t overflow-hidden bg-gray-50/90 backdrop-blur-md relative z-10"
+              style={{ borderColor: `${chatSettings.fontColor}1a` }}
+            >
+              <div className="p-6 grid grid-cols-4 gap-y-6 gap-x-4">
+                {[
+                  { icon: ImageIcon, label: '照片', onClick: () => setPhotoModal('choose') },
+                  { icon: Camera, label: '拍摄', onClick: () => {} },
+                  { icon: Video, label: '视频通话', onClick: () => { setShowPlusMenu(false); setCallChooseModal(true); } },
+                  { icon: MapPin, label: '位置', onClick: () => {} },
+                  { icon: Wallet, label: '红包', onClick: () => {} },
+                  { icon: Gift, label: '礼物', onClick: () => {} },
+                  { icon: ArrowRightLeft, label: '转账', onClick: () => {} },
+                  { icon: Star, label: '收藏', onClick: () => {} },
+                  { icon: UserSquare, label: '个人名片', onClick: () => {} },
+                  { icon: File, label: '文件', onClick: () => {} },
+                  { icon: Ticket, label: '卡券', onClick: () => {} },
+                  { icon: Music, label: '音乐', onClick: () => {} },
+                  { icon: RefreshCw, label: '重回', onClick: handleRegenerate },
+                ].map((item, i) => (
+                  <div key={i} className="flex flex-col items-center gap-2 cursor-pointer group" onClick={item.onClick}>
+                    <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm group-hover:bg-gray-100 transition-colors">
+                      <item.icon className="w-6 h-6 text-gray-700" />
+                    </div>
+                    <span className="text-[11px] text-gray-500">{item.label}</span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Context Menu */}
         {contextMenu && (
           <>
             <div className="fixed inset-0 z-[80]" onClick={() => setContextMenu(null)} />
             <div 
-              className="fixed z-[90] bg-white rounded-lg shadow-xl border py-1 w-32"
-              style={{ left: Math.min(contextMenu.x, window.innerWidth - 130), top: contextMenu.y }}
+              className="fixed z-[90] bg-white rounded-lg shadow-xl border py-1 w-36"
+              style={{ left: Math.min(contextMenu.x, window.innerWidth - 150), top: contextMenu.y }}
             >
+              <button onClick={() => { navigator.clipboard.writeText(chatHistory.find((m:any, i:number) => m.id === contextMenu.msgId || (!m.id && i === parseInt(contextMenu.msgId)))?.text || ''); setContextMenu(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"><Copy className="w-4 h-4"/> 复制</button>
+              <button onClick={() => { alert("转发功能开发中..."); setContextMenu(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"><Forward className="w-4 h-4"/> 转发</button>
+              <button onClick={() => { alert("已收藏"); setContextMenu(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"><Star className="w-4 h-4"/> 收藏</button>
+              <button onClick={() => { alert("多选模式开发中..."); setContextMenu(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"><CheckSquare className="w-4 h-4"/> 多选</button>
+              <button onClick={() => { 
+                const msg = chatHistory.find((m:any, i:number) => m.id === contextMenu.msgId || (!m.id && i === parseInt(contextMenu.msgId)));
+                if (msg) setReplyingTo({ id: msg.id, text: msg.text, role: msg.role });
+                setContextMenu(null); 
+              }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"><Quote className="w-4 h-4"/> 引用</button>
+              <button onClick={() => handleInnerVoice(contextMenu.msgId)} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"><MessageCircleHeart className="w-4 h-4"/> 心声</button>
+              <div className="h-px bg-gray-100 my-1" />
               <button onClick={() => handleRecall(contextMenu.msgId)} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"><Undo2 className="w-4 h-4"/> 撤回</button>
               <button onClick={() => handleTranslate(contextMenu.msgId)} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"><Languages className="w-4 h-4"/> 翻译</button>
               <button onClick={() => { 
@@ -1099,6 +1275,56 @@ export default function WeChatApp({
           </div>
         )}
 
+        {/* Photo Modal */}
+        {photoModal !== 'none' && (
+          <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl w-full max-w-sm p-4">
+              {photoModal === 'choose' ? (
+                <>
+                  <h3 className="font-bold mb-4 text-center">选择照片类型</h3>
+                  <div className="space-y-3">
+                    <button 
+                      className="w-full py-3 bg-gray-100 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                      onClick={() => {
+                        alert("真实照片上传功能开发中...");
+                        setPhotoModal('none');
+                      }}
+                    >
+                      发送真实照片
+                    </button>
+                    <button 
+                      className="w-full py-3 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600 transition-colors"
+                      onClick={() => setPhotoModal('text-photo-input')}
+                    >
+                      发送文字描述照片
+                    </button>
+                    <button 
+                      className="w-full py-3 text-gray-500 text-sm font-medium"
+                      onClick={() => setPhotoModal('none')}
+                    >
+                      取消
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h3 className="font-bold mb-4">输入照片描述</h3>
+                  <textarea 
+                    value={textPhotoInput}
+                    onChange={(e) => setTextPhotoInput(e.target.value)}
+                    placeholder="描述这张照片的内容..."
+                    className="w-full h-32 border rounded-lg p-2 mb-4 resize-none focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <button onClick={() => setPhotoModal('choose')} className="px-4 py-2 text-sm text-gray-500">返回</button>
+                    <button onClick={handleSendTextPhoto} className="px-4 py-2 text-sm bg-green-500 text-white rounded-lg">发送</button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Confirm Modal */}
         {confirmModal?.isOpen && (
           <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4">
@@ -1112,6 +1338,173 @@ export default function WeChatApp({
             </div>
           </div>
         )}
+
+        {/* Call Choose Modal */}
+        <AnimatePresence>
+          {callChooseModal && (
+            <div className="fixed inset-0 z-[100] bg-black/50 flex items-end justify-center" onClick={() => setCallChooseModal(false)}>
+              <motion.div 
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                className="bg-white w-full rounded-t-2xl overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button 
+                  className="w-full py-4 border-b text-center text-lg active:bg-gray-50"
+                  onClick={() => { setCallChooseModal(false); setCallState({ isActive: true, type: 'video', status: 'dialing', isMuted: false, isSpeaker: true, transcript: [] }); }}
+                >
+                  视频通话
+                </button>
+                <button 
+                  className="w-full py-4 border-b text-center text-lg active:bg-gray-50"
+                  onClick={() => { setCallChooseModal(false); setCallState({ isActive: true, type: 'voice', status: 'dialing', isMuted: false, isSpeaker: false, transcript: [] }); }}
+                >
+                  语音通话
+                </button>
+                <div className="h-2 bg-gray-100" />
+                <button 
+                  className="w-full py-4 text-center text-lg active:bg-gray-50"
+                  onClick={() => setCallChooseModal(false)}
+                >
+                  取消
+                </button>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Call UI */}
+        <AnimatePresence>
+          {callState?.isActive && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="fixed inset-0 z-[110] bg-[#1a1a1a] flex flex-col text-white"
+            >
+              {/* Background for Voice Call */}
+              {callState.type === 'voice' && (
+                <div className="absolute inset-0 z-0 opacity-20">
+                  <img src={activeChar.avatar} className="w-full h-full object-cover blur-xl" alt="" />
+                </div>
+              )}
+
+              {/* Video Call Layout */}
+              {callState.type === 'video' && callState.status === 'connected' && (
+                <div className="absolute inset-0 z-0 flex flex-col">
+                  <div className="flex-1 relative bg-black">
+                    <img src={activeChar.avatar} className="w-full h-full object-cover" alt="" />
+                  </div>
+                  <div className="absolute top-12 right-4 w-24 h-36 bg-gray-800 rounded-lg overflow-hidden border-2 border-gray-600 z-10 shadow-lg">
+                    <img src={appState.currentUser?.avatar || "https://picsum.photos/seed/user/100/100"} className="w-full h-full object-cover" alt="" />
+                  </div>
+                </div>
+              )}
+
+              {/* Header */}
+              <div className="relative z-10 pt-16 px-6 flex flex-col items-center">
+                {callState.type === 'voice' && (
+                  <div className="w-24 h-24 rounded-2xl overflow-hidden mb-4 shadow-2xl">
+                    <img src={activeChar.avatar} className="w-full h-full object-cover" alt="" />
+                  </div>
+                )}
+                <h2 className="text-2xl font-medium drop-shadow-md">{activeChar.name}</h2>
+                <p className="text-sm opacity-70 mt-2 drop-shadow-md">
+                  {callState.status === 'dialing' ? '正在等待对方接受邀请...' : '00:00'}
+                </p>
+              </div>
+
+              {/* Transcript Area */}
+              <div className="flex-1 relative z-10 overflow-y-auto p-4 flex flex-col gap-4 mt-8 scrollbar-hide">
+                {callState.transcript.map(msg => (
+                  <div key={msg.id} className={cn("flex", msg.role === 'user' ? "justify-end" : "justify-start")}>
+                    <div className={cn("max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow-sm", msg.role === 'user' ? "bg-green-500/90 text-white" : "bg-white/20 text-white backdrop-blur-md")}>
+                      {msg.text}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Controls */}
+              <div className="relative z-10 pb-12 px-8 pt-4 bg-gradient-to-t from-black/80 to-transparent">
+                {callState.status === 'connected' && (
+                  <div className="flex items-center gap-2 bg-black/40 backdrop-blur-md rounded-full p-1 mb-8 border border-white/10">
+                    <input 
+                      type="text"
+                      value={callInputText}
+                      onChange={(e) => setCallInputText(e.target.value)}
+                      placeholder="发送文字..."
+                      className="flex-1 bg-transparent border-none focus:outline-none px-4 text-sm text-white placeholder-white/50"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && callInputText.trim()) {
+                          const newMsg = { id: Date.now().toString(), role: 'user' as const, text: callInputText };
+                          setCallState(prev => prev ? { ...prev, transcript: [...prev.transcript, newMsg] } : null);
+                          setCallInputText('');
+                          // Trigger AI response for call
+                          setTimeout(() => {
+                             setCallState(prev => prev ? { ...prev, transcript: [...prev.transcript, { id: Date.now().toString(), role: 'ai', text: '（语音回复模拟中...）' }] } : null);
+                          }, 1000);
+                        }
+                      }}
+                    />
+                    <button 
+                      className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center shrink-0 disabled:opacity-50"
+                      disabled={!callInputText.trim()}
+                      onClick={() => {
+                        if (callInputText.trim()) {
+                          const newMsg = { id: Date.now().toString(), role: 'user' as const, text: callInputText };
+                          setCallState(prev => prev ? { ...prev, transcript: [...prev.transcript, newMsg] } : null);
+                          setCallInputText('');
+                          setTimeout(() => {
+                             setCallState(prev => prev ? { ...prev, transcript: [...prev.transcript, { id: Date.now().toString(), role: 'ai', text: '（语音回复模拟中...）' }] } : null);
+                          }, 1000);
+                        }
+                      }}
+                    >
+                      <Send className="w-4 h-4 ml-0.5" />
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center px-4">
+                  <button 
+                    className={cn("flex flex-col items-center gap-2 transition-opacity", callState.isMuted ? "text-white" : "text-white/70")}
+                    onClick={() => setCallState(prev => prev ? { ...prev, isMuted: !prev.isMuted } : null)}
+                  >
+                    <div className={cn("w-16 h-16 rounded-full flex items-center justify-center transition-colors", callState.isMuted ? "bg-white/20" : "bg-black/30")}>
+                      <Mic className="w-6 h-6" />
+                    </div>
+                    <span className="text-xs">静音</span>
+                  </button>
+
+                  <button 
+                    className="flex flex-col items-center gap-2 text-red-500 hover:opacity-80 transition-opacity"
+                    onClick={() => setCallState(null)}
+                  >
+                    <div className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center shadow-lg shadow-red-500/20">
+                      <div className="w-8 h-3 bg-white rounded-full rotate-[135deg]" />
+                    </div>
+                    <span className="text-xs text-white/70">挂断</span>
+                  </button>
+
+                  <button 
+                    className={cn("flex flex-col items-center gap-2 transition-opacity", callState.isSpeaker ? "text-white" : "text-white/70")}
+                    onClick={() => setCallState(prev => prev ? { ...prev, isSpeaker: !prev.isSpeaker } : null)}
+                  >
+                    <div className={cn("w-16 h-16 rounded-full flex items-center justify-center transition-colors", callState.isSpeaker ? "bg-white/20" : "bg-black/30")}>
+                      <div className="w-6 h-6 border-2 border-current rounded-full flex items-center justify-center">
+                        <div className="w-2 h-2 bg-current rounded-full" />
+                      </div>
+                    </div>
+                    <span className="text-xs">免提</span>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
     );
   }
