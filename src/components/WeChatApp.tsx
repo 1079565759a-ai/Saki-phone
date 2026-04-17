@@ -73,6 +73,8 @@ export interface ChatSettings {
   bgOpacity: number;
   bubbleOpacity: number;
   bubbleRadius: number;
+  customFontData: string | null;
+  customFontName: string | null;
 }
 
 const defaultChatSettings: ChatSettings = {
@@ -89,6 +91,8 @@ const defaultChatSettings: ChatSettings = {
   bgOpacity: 100,
   bubbleOpacity: 100,
   bubbleRadius: 8,
+  customFontData: null,
+  customFontName: null,
 };
 
 const hexToRgba = (hex: string, opacity: number) => {
@@ -173,6 +177,11 @@ export default function WeChatApp({
   const scrollRef = useRef<HTMLDivElement>(null);
   
   const [showPlusMenu, setShowPlusMenu] = useState(false);
+  const [showRedPacketSendModal, setShowRedPacketSendModal] = useState(false);
+  const [redPacketAmount, setRedPacketAmount] = useState('');
+  const [redPacketGreeting, setRedPacketGreeting] = useState('恭喜发财，大吉大利');
+  const [redPacketCover, setRedPacketCover] = useState<string | null>(null);
+  const [activeRedPacket, setActiveRedPacket] = useState<any | null>(null);
   const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, title: string, message: string, onConfirm: () => void} | null>(null);
   const [contextMenu, setContextMenu] = useState<{msgId: string, x: number, y: number, isUser: boolean} | null>(null);
   const [isMultiSelecting, setIsMultiSelecting] = useState(false);
@@ -214,6 +223,8 @@ export default function WeChatApp({
     bgOpacity: savedSettings?.bgOpacity ?? defaultChatSettings.bgOpacity,
     bubbleOpacity: savedSettings?.bubbleOpacity ?? defaultChatSettings.bubbleOpacity,
     bubbleRadius: savedSettings?.bubbleRadius ?? defaultChatSettings.bubbleRadius,
+    customFontData: savedSettings?.customFontData || defaultChatSettings.customFontData,
+    customFontName: savedSettings?.customFontName || defaultChatSettings.customFontName,
   };
   
   const updateChatSettings = (newSettings: Partial<ChatSettings>) => {
@@ -289,9 +300,43 @@ export default function WeChatApp({
     setInputText('');
     setReplyingTo(null);
     setIsTyping(true);
+    triggerAI([...((appState.chatHistories || {})[selectedChatId] || []), ...newMsgs]);
   };
 
-  const triggerAI = async (historyToUse: any[]) => {
+  const handleSendRedPacket = () => {
+    if (!redPacketAmount || parseFloat(redPacketAmount) <= 0 || parseFloat(redPacketAmount) > 200 || !selectedChatId || !activeChar) return;
+    
+    const newMsg = {
+      id: Date.now().toString(),
+      role: 'user',
+      text: '', // Text is empty, only red packet
+      timestamp: Date.now(),
+      redPacket: {
+          amount: redPacketAmount,
+          greeting: redPacketGreeting || '恭喜发财，大吉大利',
+          coverImage: redPacketCover,
+          status: 'unread',
+          sender: 'user'
+      }
+    };
+
+    const newHistory = [...((appState.chatHistories || {})[selectedChatId] || []), newMsg];
+    updateState('chatHistories', (prev: any) => ({
+      ...prev,
+      [selectedChatId]: newHistory
+    }));
+    
+    setShowRedPacketSendModal(false);
+    setRedPacketAmount('');
+    setRedPacketGreeting('恭喜发财，大吉大利');
+    setRedPacketCover(null);
+    setIsTyping(true);
+
+    const hiddenInstruction = `[系统通知：用户向你发送了一个红包，金额：${newMsg.redPacket.amount}，祝福语："${newMsg.redPacket.greeting}"。请根据你的人设决定是否收取。如果你决定收取，在一开始写 [收取红包]；如果拒收写 [退回红包]，然后接着正常聊天。记得表现出符合人设的情感反应！]`;
+    triggerAI(newHistory, hiddenInstruction);
+  };
+
+  const triggerAI = async (historyToUse: any[], hiddenInstruction?: string) => {
     if (!selectedChatId || !activeChar) return;
 
     if (!appState.apiBaseUrl || !appState.apiKey) {
@@ -316,9 +361,30 @@ export default function WeChatApp({
 5. 特殊操作：
    · 单独发送 [撤回] 撤回上一条。
    · 开头用 [引用:对方原句] 换行后继续。
+   · 收到红包：如果有系统提示说对方发了红包，即使你看不到金额数字，请根据你的人设决定是否收红包。如果收，在一开始写 [收取红包]；如果拒收写 [退回红包]，然后正常回复你的感谢或拒绝。
+   · 主动发红包：如果你想发红包给她，请在单独的空行发送：[红包:金额:祝福语]，例如 [红包:52.00:买奶茶]。其他的内容换行继续讲。
 6.会正常使用各类标点符号。
 7.必须保持逻辑连贯，活人感优先。`;
       const finalSystemPrompt = `${baseSystemPrompt}${characterPersona}${strictRules}`;
+
+      let formattedHistory = historyToUse.map(m => {
+        let content = m.text;
+        if (m.isRecalled) {
+          content = m.role === 'user' 
+            ? `[用户撤回了一条消息，撤回的原始内容为: "${m.originalText}"]`
+            : `[你撤回了一条消息，撤回的原始内容为: "${m.originalText}"]`;
+        }
+        if (m.redPacket) {
+            content = m.role === 'ai' 
+              ? `[你发了一个红包，金额：${m.redPacket.amount}，祝福语：${m.redPacket.greeting}]` + (content ? `\n${content}` : '')
+              : content; // user red packet is handled by hiddenInstruction
+        }
+        return { role: m.role === 'ai' ? 'assistant' : 'user', content };
+      });
+
+      if (hiddenInstruction) {
+        formattedHistory.push({ role: 'user', content: hiddenInstruction });
+      }
 
       const response = await fetch(url, {
         method: 'POST',
@@ -330,15 +396,7 @@ export default function WeChatApp({
           model: appState.selectedModel || "gpt-3.5-turbo",
           messages: [
             { role: 'system', content: finalSystemPrompt },
-            ...historyToUse.map(m => {
-              let content = m.text;
-              if (m.isRecalled) {
-                content = m.role === 'user' 
-                  ? `[用户撤回了一条消息，撤回的原始内容为: "${m.originalText}"]`
-                  : `[你撤回了一条消息，撤回的原始内容为: "${m.originalText}"]`;
-              }
-              return { role: m.role === 'ai' ? 'assistant' : 'user', content };
-            })
+            ...formattedHistory
           ],
           stream: true
         })
@@ -394,6 +452,28 @@ export default function WeChatApp({
                   let isRecalling = displayContent.includes('[撤回]');
                   displayContent = displayContent.replace(/\[撤回\]/g, '').trim();
 
+                  let rpStatusUpdate: 'opened' | 'returned' | null = null;
+                  if (displayContent.includes('[收取红包]')) {
+                    rpStatusUpdate = 'opened';
+                    displayContent = displayContent.replace(/\[收取红包\]/g, '').trim();
+                  } else if (displayContent.includes('[退回红包]')) {
+                    rpStatusUpdate = 'returned';
+                    displayContent = displayContent.replace(/\[退回红包\]/g, '').trim();
+                  }
+
+                  let aiRedPacketMatch = displayContent.match(/\[红包:([0-9.]+):([^\]]+)\]/);
+                  let aiRedPacketData = null;
+                  if (aiRedPacketMatch) {
+                    aiRedPacketData = {
+                      amount: aiRedPacketMatch[1],
+                      greeting: aiRedPacketMatch[2],
+                      coverImage: null,
+                      status: 'unread',
+                      sender: 'ai'
+                    };
+                    displayContent = displayContent.replace(aiRedPacketMatch[0], '').trim();
+                  }
+
                   const parts = displayContent.split(/\n+/).map(s => s.trim()).filter(Boolean);
 
                   updateState('chatHistories', (prev: any) => {
@@ -407,17 +487,37 @@ export default function WeChatApp({
                          }
                        }
                     }
+
+                    if (rpStatusUpdate) {
+                       for (let i = history.length - 1; i >= 0; i--) {
+                         if (history[i].redPacket?.sender === 'user' && history[i].redPacket?.status === 'unread') {
+                             history[i] = { 
+                                 ...history[i], 
+                                 redPacket: { ...history[i].redPacket, status: rpStatusUpdate } 
+                             };
+                             break;
+                         }
+                       }
+                    }
                     
                     const filteredHistory = history.filter(m => !m.id?.startsWith(baseMsgId));
                     
-                    const newMsgs = parts.length > 0 ? parts.map((part, idx) => ({
+                    const newMsgs: any[] = parts.length > 0 ? parts.map((part, idx) => ({
                       id: `${baseMsgId}-${idx}`,
                       role: 'ai',
                       text: part,
                       timestamp: Date.now(),
                       quote: idx === 0 ? quote : undefined
-                    })) : [{ id: `${baseMsgId}-0`, role: 'ai', text: '...', timestamp: Date.now() }];
-                    
+                    })) : [{ id: `${baseMsgId}-0`, role: 'ai', text: isRecalling ? '' : '...', timestamp: Date.now() }];
+
+                    if (newMsgs[0].text === '...' && aiRedPacketData) {
+                        newMsgs[0].text = ''; 
+                    }
+
+                    if (aiRedPacketData && newMsgs.length > 0) {
+                        newMsgs[0].redPacket = aiRedPacketData;
+                    }
+
                     return { ...prev, [selectedChatId]: [...filteredHistory, ...newMsgs] };
                   });
                   
@@ -878,6 +978,49 @@ export default function WeChatApp({
               </div>
             </div>
 
+            {/* Font Settings */}
+            <div className="space-y-4">
+              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-widest">字体设置</h3>
+              <div className="space-y-2">
+                <label className="text-[10px] text-gray-500">全局自定义字体</label>
+                <div className="flex items-center gap-2">
+                  <label className="flex-1 py-3 px-4 text-xs border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-center overflow-hidden relative">
+                    <input 
+                      type="file" 
+                      accept=".ttf,.otf,.woff,.woff2"
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (ev) => {
+                            updateChatSettings({ 
+                              customFontData: ev.target?.result as string,
+                              customFontName: file.name
+                            });
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                        e.target.value = '';
+                      }}
+                    />
+                    <div className="truncate max-w-[200px]">
+                      {chatSettings.customFontName || "导入字体文件 (TTF/OTF)"}
+                    </div>
+                  </label>
+                  {chatSettings.customFontData && (
+                    <button 
+                      onClick={() => updateChatSettings({ customFontData: null, customFontName: null })}
+                      className="p-3 text-red-500 hover:bg-red-50 rounded-xl transition-colors border border-transparent hover:border-red-100 shrink-0"
+                      title="移除自定义字体"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
             {/* Bubble Size & Shape & Opacity */}
             <div className="space-y-6">
               <div className="space-y-4">
@@ -1042,8 +1185,21 @@ export default function WeChatApp({
         animate={{ x: 0 }}
         exit={{ x: '100%' }}
         className="absolute inset-0 flex flex-col z-50 overflow-hidden"
-        style={{ backgroundColor: chatSettings.chatBackgroundColor, color: chatSettings.fontColor }}
+        style={{ 
+          backgroundColor: chatSettings.chatBackgroundColor, 
+          color: chatSettings.fontColor,
+          fontFamily: chatSettings.customFontData ? '"CustomChatFont", sans-serif' : undefined
+        }}
       >
+        {chatSettings.customFontData && (
+          <style>{`
+            @font-face {
+              font-family: 'CustomChatFont';
+              src: url('${chatSettings.customFontData}');
+              font-display: swap;
+            }
+          `}</style>
+        )}
         {/* Background Image */}
         <div className="absolute inset-0 z-0">
           {chatSettings.backgroundImage ? (
@@ -1199,7 +1355,29 @@ export default function WeChatApp({
                           <div className="truncate max-w-full">{msg.quote.text}</div>
                         </div>
                       )}
-                      {msg.text}
+                      
+                      {msg.redPacket ? (
+                        <div
+                          className="rounded-xl overflow-hidden cursor-pointer"
+                          style={{ backgroundColor: 'rgba(251, 146, 171, 0.15)', minWidth: '180px' }}
+                          onClick={() => setActiveRedPacket(msg)}
+                        >
+                           <div className="p-3 flex items-center gap-3">
+                               <div className="w-10 h-10 rounded-lg bg-[#fa9e3b]/20 flex items-center justify-center shrink-0">
+                                  <Wallet className="w-6 h-6 text-[#fa9e3b]/80" />
+                               </div>
+                               <div className="flex flex-col flex-1 min-w-0">
+                                   <span className="text-[#d84e43]/90 font-medium truncate" style={{ fontSize: '0.95em' }}>{msg.redPacket.greeting}</span>
+                                   <span className="text-[#d84e43]/60 mt-0.5" style={{ fontSize: '0.75em' }}>
+                                       {msg.redPacket.status === 'opened' ? '已领取' : (msg.redPacket.status === 'returned' ? '已退回' : '微信红包')}
+                                   </span>
+                               </div>
+                           </div>
+                        </div>
+                      ) : (
+                        msg.text && <span>{msg.text}</span>
+                      )}
+
                       {msg.isTranslating && (
                         <div className="mt-2 pt-2 border-t border-black/10 text-xs opacity-70 flex items-center gap-1">
                           <RefreshCw className="w-3 h-3 animate-spin" /> 翻译中...
@@ -1328,7 +1506,7 @@ export default function WeChatApp({
                   { icon: Camera, label: '拍摄', onClick: () => {} },
                   { icon: Video, label: '视频通话', onClick: () => { setShowPlusMenu(false); setCallChooseModal(true); } },
                   { icon: MapPin, label: '位置', onClick: () => {} },
-                  { icon: Wallet, label: '红包', onClick: () => {} },
+                  { icon: Wallet, label: '红包', onClick: () => { setShowPlusMenu(false); setShowRedPacketSendModal(true); } },
                   { icon: Gift, label: '礼物', onClick: () => {} },
                   { icon: ArrowRightLeft, label: '转账', onClick: () => {} },
                   { icon: Star, label: '收藏', onClick: () => {} },
@@ -1486,6 +1664,176 @@ export default function WeChatApp({
             </div>
           </div>
         )}
+
+        {/* Red Packet Send Modal */}
+        <AnimatePresence>
+          {showRedPacketSendModal && (
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              className="absolute inset-0 z-[120] bg-[#F5F5F5] flex flex-col"
+            >
+              <div className="flex items-center justify-between p-4 bg-[#F5F5F5] border-b border-gray-200/50">
+                <span className="text-base text-gray-700 cursor-pointer" onClick={() => setShowRedPacketSendModal(false)}>取消</span>
+                <span className="font-medium text-lg">发红包</span>
+                <span className="w-8"></span>
+              </div>
+              <div className="flex-1 p-4 flex flex-col gap-4 overflow-y-auto">
+                 <div className="bg-white rounded-xl p-4 flex items-center justify-between">
+                    <span className="text-gray-900">金额</span>
+                    <div className="flex items-center text-right">
+                       <input
+                          type="number"
+                          value={redPacketAmount}
+                          onChange={(e) => setRedPacketAmount(e.target.value)}
+                          placeholder="0.00"
+                          className="text-right outline-none bg-transparent w-24 text-gray-900 focus:bg-white active:bg-white"
+                       />
+                       <span className="ml-1 text-gray-900">元</span>
+                    </div>
+                 </div>
+                 {parseFloat(redPacketAmount) > 200 && (
+                    <p className="text-red-500 px-2 mt-[-8px] text-xs">单次支付总额不可超过200元</p>
+                 )}
+
+                 <div className="bg-white rounded-xl p-4 flex flex-col gap-2">
+                    <span className="text-gray-900">祝福语</span>
+                    <textarea
+                       className="w-full resize-none outline-none text-gray-900 mt-2"
+                       rows={2}
+                       value={redPacketGreeting}
+                       onChange={(e) => setRedPacketGreeting(e.target.value)}
+                    ></textarea>
+                 </div>
+
+                 <div className="bg-white rounded-xl p-4 flex items-center justify-between">
+                    <span className="text-gray-900">红包封面</span>
+                    <input
+                       type="file"
+                       accept="image/*"
+                       className="hidden"
+                       id="rp-cover-upload"
+                       onChange={async (e) => {
+                           const file = e.target.files?.[0];
+                           if(file) {
+                               try {
+                                  const compressed = await compressImage(file, 800, 1200, 0.8);
+                                  setRedPacketCover(compressed);
+                               } catch(err) {
+                                  const reader = new FileReader();
+                                  reader.onload = ev => setRedPacketCover(ev.target?.result as string);
+                                  reader.readAsDataURL(file);
+                               }
+                           }
+                           e.target.value = '';
+                       }}
+                    />
+                    <label htmlFor="rp-cover-upload" className="flex items-center gap-2 cursor-pointer">
+                       {redPacketCover ? (
+                          <img src={redPacketCover} className="w-8 h-8 rounded object-cover border border-gray-200" alt="封面" />
+                       ) : (
+                          <span className="text-gray-400 text-sm">选择封面 {'>'}</span>
+                       )}
+                    </label>
+                 </div>
+
+                 <div className="mt-8 flex flex-col items-center gap-2">
+                    <h1 className="text-4xl font-bold mb-4">¥ {redPacketAmount || '0.00'}</h1>
+                    <button
+                       className="w-full bg-[#fa9e3b] text-white rounded-full py-3 text-lg font-medium opacity-90 hover:opacity-100 disabled:opacity-50 transition-opacity"
+                       disabled={!redPacketAmount || parseFloat(redPacketAmount) > 200 || parseFloat(redPacketAmount) <= 0}
+                       onClick={handleSendRedPacket}
+                    >
+                       塞钱进红包
+                    </button>
+                 </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Red Packet Receive Modal */}
+        <AnimatePresence>
+          {activeRedPacket && (
+             <motion.div
+               initial={{ opacity: 0, scale: 0.9 }}
+               animate={{ opacity: 1, scale: 1 }}
+               exit={{ opacity: 0, scale: 0.9 }}
+               className="fixed inset-0 z-[130] flex items-center justify-center p-8 bg-black/60 backdrop-blur-sm"
+               onClick={() => setActiveRedPacket(null)}
+             >
+                <div
+                   className="w-full max-w-sm rounded-[24px] overflow-hidden relative shadow-2xl flex flex-col items-center bg-[#d84e43]"
+                   style={{
+                     minHeight: '440px',
+                     backgroundImage: activeRedPacket.redPacket.coverImage ? `url(${activeRedPacket.redPacket.coverImage})` : 'none',
+                     backgroundSize: 'cover',
+                     backgroundPosition: 'center'
+                   }}
+                   onClick={(e) => e.stopPropagation()}
+                >
+                   {activeRedPacket.redPacket.coverImage && <div className="absolute inset-0 bg-black/40 mix-blend-multiply pointer-events-none"></div>}
+
+                   <button className="absolute top-4 left-4 text-white hover:opacity-80 transition-opacity z-20" onClick={() => setActiveRedPacket(null)}>
+                      <X className="w-6 h-6" />
+                   </button>
+
+                   <div className="relative z-10 flex flex-col items-center w-full text-[#fae3b7] mt-16 px-6">
+                      <div className="w-16 h-16 rounded-xl overflow-hidden border-2 border-[#fae3b7]/30 mb-4 bg-gray-200">
+                         <img 
+                            src={activeRedPacket.redPacket.sender === 'user' ? (appState.currentUser?.avatar || "https://picsum.photos/seed/user/100/100") : activeChar.avatar} 
+                            className="w-full h-full object-cover" 
+                            alt=""
+                         />
+                      </div>
+                      <h2 className="text-lg font-medium mb-1 opacity-90 text-center flex items-center gap-1">
+                         {activeRedPacket.redPacket.sender === 'user' ? (appState.currentUser?.nickname || '你') : activeChar.name}的红包
+                      </h2>
+                      <p className="text-xl font-bold text-[#fae3b7] text-center mb-8 px-4 w-full break-words">
+                         {activeRedPacket.redPacket.greeting}
+                      </p>
+
+                      {activeRedPacket.redPacket.status === 'opened' ? (
+                          <div className="text-center font-bold text-5xl text-[#fae3b7] mt-6 drop-shadow-md">
+                             {activeRedPacket.redPacket.amount}
+                             <span className="text-xl ml-1 font-medium">元</span>
+                          </div>
+                      ) : activeRedPacket.redPacket.status === 'returned' ? (
+                          <div className="text-center font-bold text-2xl text-white/80 mt-6">
+                             已退回红包
+                          </div>
+                      ) : (
+                         <div className="mt-6 flex justify-center">
+                            {activeRedPacket.redPacket.sender === 'ai' ? (
+                            <button
+                               onClick={() => {
+                                  updateState('chatHistories', (prev: any) => {
+                                      const hist = prev[selectedChatId!] || [];
+                                      return {
+                                          ...prev,
+                                          [selectedChatId!]: hist.map((m:any) => m.id === activeRedPacket.id ? { ...m, redPacket: { ...m.redPacket, status: 'opened' } } : m)
+                                      };
+                                  });
+                                  setActiveRedPacket({ ...activeRedPacket, redPacket: { ...activeRedPacket.redPacket, status: 'opened' } });
+                               }}
+                               className="w-24 h-24 rounded-full bg-[#ebd295] text-[#d84e43] text-4xl font-bold flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+                               style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}
+                            >
+                               开
+                            </button>
+                            ) : (
+                            <div className="text-center text-white/80 mt-4 text-sm tracking-wide">
+                               等待对方领取...
+                            </div>
+                            )}
+                         </div>
+                      )}
+                   </div>
+                </div>
+             </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Call Choose Modal */}
         <AnimatePresence>
