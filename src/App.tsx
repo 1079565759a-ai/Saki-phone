@@ -1157,7 +1157,14 @@ export default function App() {
 
   // Persist state
   useEffect(() => {
-    localStorage.setItem('gala_game_state', JSON.stringify(appState));
+    try {
+      localStorage.setItem('gala_game_state', JSON.stringify(appState));
+    } catch (e) {
+      console.error('Failed to save state to localStorage:', e);
+      if (e instanceof DOMException && e.name === 'QuotaExceededError') {
+         alert('存储空间不足！由于您上传的图片过多或过大，超出了浏览器的存储限制。请尝试移除一些自定义字体、头像框或清空聊天记录。');
+      }
+    }
   }, [appState]);
 
   // Migration: Ensure app labels and home screen text are English for existing users

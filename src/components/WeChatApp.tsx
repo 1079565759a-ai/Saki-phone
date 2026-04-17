@@ -41,6 +41,7 @@ import {
 import { cn } from '../utils/cn';
 import LoginScreen from './LoginScreen';
 import { GoogleGenAI } from "@google/genai";
+import { compressImage } from '../utils/image';
 
 interface User {
   nickname: string;
