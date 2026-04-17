@@ -183,6 +183,17 @@ export default function WeChatApp({
   const [redPacketGreeting, setRedPacketGreeting] = useState('恭喜发财，大吉大利');
   const [redPacketCover, setRedPacketCover] = useState<string | null>(null);
   const [activeRedPacket, setActiveRedPacket] = useState<any | null>(null);
+  
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferAmount, setTransferAmount] = useState('');
+  const [transferRemark, setTransferRemark] = useState('');
+  
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [locationName, setLocationName] = useState('');
+  const [locationAddress, setLocationAddress] = useState('');
+  
+  const [callRecordModal, setCallRecordModal] = useState<{isOpen: boolean, transcript: any[]} | null>(null);
+
   const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, title: string, message: string, onConfirm: () => void} | null>(null);
   const [contextMenu, setContextMenu] = useState<{msgId: string, x: number, y: number, isUser: boolean} | null>(null);
   const [isMultiSelecting, setIsMultiSelecting] = useState(false);
@@ -300,8 +311,12 @@ export default function WeChatApp({
     
     setInputText('');
     setReplyingTo(null);
-    setIsTyping(true);
-    triggerAI([...((appState.chatHistories || {})[selectedChatId] || []), ...newMsgs]);
+  };
+
+  const handleTriggerAIReplyGlobal = () => {
+    if (!selectedChatId || !activeChar) return;
+    const history = (appState.chatHistories || {})[selectedChatId] || [];
+    triggerAI(history);
   };
 
   const handleSendRedPacket = () => {
@@ -331,10 +346,64 @@ export default function WeChatApp({
     setRedPacketAmount('');
     setRedPacketGreeting('恭喜发财，大吉大利');
     setRedPacketCover(null);
-    setIsTyping(true);
 
     const hiddenInstruction = `[系统通知：用户向你发送了一个红包，金额：${newMsg.redPacket.amount}，祝福语："${newMsg.redPacket.greeting}"。请根据你的人设决定是否收取。如果你决定收取，在一开始写 [收取红包]；如果拒收写 [退回红包]，然后接着正常聊天。记得表现出符合人设的情感反应！]`;
     triggerAI(newHistory, hiddenInstruction);
+  };
+
+  const handleSendTransfer = () => {
+    if (!transferAmount || parseFloat(transferAmount) <= 0 || parseFloat(transferAmount) > 1000000 || !selectedChatId || !activeChar) return;
+    
+    const newMsg = {
+      id: Date.now().toString(),
+      role: 'user',
+      text: '', // Empty text
+      timestamp: Date.now(),
+      transfer: {
+          amount: transferAmount,
+          remark: transferRemark || '转账',
+          status: 'unread',
+          sender: 'user'
+      }
+    };
+
+    const newHistory = [...((appState.chatHistories || {})[selectedChatId] || []), newMsg];
+    updateState('chatHistories', (prev: any) => ({
+      ...prev,
+      [selectedChatId]: newHistory
+    }));
+    
+    setShowTransferModal(false);
+    setTransferAmount('');
+    setTransferRemark('');
+
+    const hiddenInstruction = `[系统通知：用户向你发起了一笔转账，金额：¥${newMsg.transfer.amount}，备注："${newMsg.transfer.remark}"。请根据人设决定。接受在此条回复开头加 [收取转账]，如果退回加 [退回转账]。一定要有情感波动的回复。]`;
+    triggerAI(newHistory, hiddenInstruction);
+  };
+  
+  const handleSendLocation = () => {
+    if (!locationName || !selectedChatId || !activeChar) return;
+    
+    const newMsg = {
+      id: Date.now().toString(),
+      role: 'user',
+      text: '',
+      timestamp: Date.now(),
+      location: {
+         name: locationName,
+         address: locationAddress
+      }
+    };
+
+    const newHistory = [...((appState.chatHistories || {})[selectedChatId] || []), newMsg];
+    updateState('chatHistories', (prev: any) => ({
+      ...prev,
+      [selectedChatId]: newHistory
+    }));
+    
+    setShowLocationModal(false);
+    setLocationName('');
+    setLocationAddress('');
   };
 
   const triggerAI = async (historyToUse: any[], hiddenInstruction?: string) => {
@@ -362,14 +431,20 @@ export default function WeChatApp({
 5. 特殊操作：
    · 单独发送 [撤回] 撤回上一条。
    · 开头用 [引用:对方原句] 换行后继续。
-   · 收到红包：如果有系统提示说对方发了红包，即使你看不到金额数字，请根据你的人设决定是否收红包。如果收，在一开始写 [收取红包]；如果拒收写 [退回红包]，然后正常回复你的感谢或拒绝。
-   · 主动发红包：如果你想发红包给她，请在单独的空行发送：[红包:金额:祝福语]，例如 [红包:52.00:买奶茶]。其他的内容换行继续讲。
+   · 收到红包：如果有系统通知对方发了红包，根据人设决定收不收。收的话在一开始写 [收取红包]；拒收写 [退回红包]。
+   · 收到转账：如果有系统通知对方发起转账，同理，接受写 [收取转账]，拒收写 [退回转账]。
+   · 主动发红包：单独空行发送：[红包:金额(最多200):祝福语]。
+   · 主动发转账：单独空行发送：[转账:金额(单日最多100万):备注]。
+   · 主动发定位：单独空行发送：[定位:地点名称]。
 6.会正常使用各类标点符号。
 7.必须保持逻辑连贯，活人感优先。`;
       const finalSystemPrompt = `${baseSystemPrompt}${characterPersona}${strictRules}`;
 
       let formattedHistory = historyToUse.map(m => {
         let content = m.text;
+        if (m.type === 'system') {
+           content = `[系统提示: ${m.text}]`;
+        }
         if (m.isRecalled) {
           content = m.role === 'user' 
             ? `[用户撤回了一条消息，撤回的原始内容为: "${m.originalText}"]`
@@ -379,6 +454,17 @@ export default function WeChatApp({
             content = m.role === 'ai' 
               ? `[你发了一个红包，金额：${m.redPacket.amount}，祝福语：${m.redPacket.greeting}]` + (content ? `\n${content}` : '')
               : content; // user red packet is handled by hiddenInstruction
+        }
+        if (m.transfer) {
+            content = m.role === 'ai'
+              ? `[你发起了一笔转账，金额：¥${m.transfer.amount}，备注：${m.transfer.remark}]` + (content ? `\n${content}` : '')
+              : content;
+        }
+        if (m.location) {
+            content = `[${m.role === 'ai' ? '你' : '用户'}发送了定位: ${m.location.name}]` + (content ? `\n${content}` : '');
+        }
+        if (m.callRecord) {
+            content = `[通话记录: ${m.callRecord.callType === 'video' ? '视频通话' : '语音通话'}，时长 ${m.callRecord.duration}秒]` + (content ? `\n${content}` : '');
         }
         return { role: m.role === 'ai' ? 'assistant' : 'user', content };
       });
@@ -461,6 +547,15 @@ export default function WeChatApp({
                     rpStatusUpdate = 'returned';
                     displayContent = displayContent.replace(/\[退回红包\]/g, '').trim();
                   }
+                  
+                  let transferStatusUpdate: 'accepted' | 'returned' | null = null;
+                  if (displayContent.includes('[收取转账]')) {
+                      transferStatusUpdate = 'accepted';
+                      displayContent = displayContent.replace(/\[收取转账\]/g, '').trim();
+                  } else if (displayContent.includes('[退回转账]')) {
+                      transferStatusUpdate = 'returned';
+                      displayContent = displayContent.replace(/\[退回转账\]/g, '').trim();
+                  }
 
                   let aiRedPacketMatch = displayContent.match(/\[红包:([0-9.]+):([^\]]+)\]/);
                   let aiRedPacketData = null;
@@ -474,11 +569,34 @@ export default function WeChatApp({
                     };
                     displayContent = displayContent.replace(aiRedPacketMatch[0], '').trim();
                   }
+                  
+                  let aiTransferMatch = displayContent.match(/\[转账:([0-9.]+):([^\]]+)\]/);
+                  let aiTransferData = null;
+                  if (aiTransferMatch) {
+                      aiTransferData = {
+                          amount: aiTransferMatch[1],
+                          remark: aiTransferMatch[2],
+                          status: 'unread',
+                          sender: 'ai'
+                      };
+                      displayContent = displayContent.replace(aiTransferMatch[0], '').trim();
+                  }
+
+                  let aiLocationMatch = displayContent.match(/\[定位:([^\]]+)\]/);
+                  let aiLocationData = null;
+                  if (aiLocationMatch) {
+                      aiLocationData = {
+                          name: aiLocationMatch[1],
+                          address: '中国'
+                      };
+                      displayContent = displayContent.replace(aiLocationMatch[0], '').trim();
+                  }
 
                   const parts = displayContent.split(/\n+/).map(s => s.trim()).filter(Boolean);
 
                   updateState('chatHistories', (prev: any) => {
                     const history = [...(prev[selectedChatId] || [])];
+                    const systemMessagesToAdd: any[] = [];
                     
                     if (isRecalling && !hasRecalled) {
                        for (let i = history.length - 1; i >= 0; i--) {
@@ -496,9 +614,33 @@ export default function WeChatApp({
                                  ...history[i], 
                                  redPacket: { ...history[i].redPacket, status: rpStatusUpdate } 
                              };
+                             systemMessagesToAdd.push({
+                                 id: `sys-${Date.now()}-rp`,
+                                 type: 'system',
+                                 text: rpStatusUpdate === 'opened' ? `${activeChar.name}领取了你的红包` : `${activeChar.name}退还了你的红包`,
+                                 timestamp: Date.now()
+                             });
                              break;
                          }
                        }
+                    }
+
+                    if (transferStatusUpdate) {
+                        for (let i = history.length - 1; i >= 0; i--) {
+                            if (history[i].transfer?.sender === 'user' && history[i].transfer?.status === 'unread') {
+                                history[i] = {
+                                    ...history[i],
+                                    transfer: { ...history[i].transfer, status: transferStatusUpdate }
+                                };
+                                systemMessagesToAdd.push({
+                                    id: `sys-${Date.now()}-tf`,
+                                    type: 'system',
+                                    text: transferStatusUpdate === 'accepted' ? `${activeChar.name}已收款` : `${activeChar.name}已退还转账`,
+                                    timestamp: Date.now()
+                                });
+                                break;
+                            }
+                        }
                     }
                     
                     const filteredHistory = history.filter(m => !m.id?.startsWith(baseMsgId));
@@ -511,15 +653,21 @@ export default function WeChatApp({
                       quote: idx === 0 ? quote : undefined
                     })) : [{ id: `${baseMsgId}-0`, role: 'ai', text: isRecalling ? '' : '...', timestamp: Date.now() }];
 
-                    if (newMsgs[0].text === '...' && aiRedPacketData) {
+                    if (newMsgs[0].text === '...' && (aiRedPacketData || aiTransferData || aiLocationData)) {
                         newMsgs[0].text = ''; 
                     }
 
                     if (aiRedPacketData && newMsgs.length > 0) {
                         newMsgs[0].redPacket = aiRedPacketData;
                     }
+                    if (aiTransferData && newMsgs.length > 0) {
+                        newMsgs[0].transfer = aiTransferData;
+                    }
+                    if (aiLocationData && newMsgs.length > 0) {
+                        newMsgs[0].location = aiLocationData;
+                    }
 
-                    return { ...prev, [selectedChatId]: [...filteredHistory, ...newMsgs] };
+                    return { ...prev, [selectedChatId]: [...filteredHistory, ...systemMessagesToAdd, ...newMsgs] };
                   });
                   
                   if (isRecalling) hasRecalled = true;
@@ -1248,6 +1396,15 @@ export default function WeChatApp({
           className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-hide relative z-10"
         >
           {chatHistory.map((msg, idx) => {
+            if (msg.type === 'system') {
+               return (
+                 <div key={msg.id || idx} id={`msg-${msg.id || idx}`} className="flex justify-center my-2">
+                   <span className="text-xs text-gray-400 bg-black/5 px-3 py-1 rounded-full max-w-[80%] text-center break-words">
+                     {msg.text}
+                   </span>
+                 </div>
+               );
+            }
             if (msg.isRecalled) {
               return (
                 <div key={msg.id || idx} id={`msg-${msg.id || idx}`} className="flex justify-center my-2">
@@ -1359,21 +1516,59 @@ export default function WeChatApp({
                       
                       {msg.redPacket ? (
                         <div
-                          className="rounded-xl overflow-hidden cursor-pointer"
-                          style={{ backgroundColor: 'rgba(251, 146, 171, 0.15)', minWidth: '180px' }}
+                          className="rounded-[16px] overflow-hidden cursor-pointer bg-white shadow-[0_4px_15px_rgba(0,0,0,0.08)] border border-gray-100/50"
+                          style={{ minWidth: '220px', maxWidth: '280px' }}
                           onClick={() => setActiveRedPacket(msg)}
                         >
-                           <div className="p-3 flex items-center gap-3">
-                               <div className="w-10 h-10 rounded-lg bg-[#fa9e3b]/20 flex items-center justify-center shrink-0">
-                                  <Wallet className="w-6 h-6 text-[#fa9e3b]/80" />
+                           <div className="p-4 flex items-center gap-4">
+                               <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center shrink-0">
+                                  <Wallet className="w-5 h-5 text-orange-400" />
                                </div>
                                <div className="flex flex-col flex-1 min-w-0">
-                                   <span className="text-[#d84e43]/90 font-medium truncate" style={{ fontSize: '0.95em' }}>{msg.redPacket.greeting}</span>
-                                   <span className="text-[#d84e43]/60 mt-0.5" style={{ fontSize: '0.75em' }}>
-                                       {msg.redPacket.status === 'opened' ? '已领取' : (msg.redPacket.status === 'returned' ? '已退回' : '微信红包')}
+                                   <span className="text-gray-700 font-medium truncate text-[15px]">微信红包</span>
+                                   <span className="text-gray-400 mt-0.5 text-[12px]">
+                                       {msg.redPacket.status === 'opened' ? '已领取' : (msg.redPacket.status === 'returned' ? '已退回' : '收到红包，请在手机上查看')}
                                    </span>
                                </div>
                            </div>
+                        </div>
+                      ) : msg.transfer ? (
+                        <div
+                          className="rounded-[16px] overflow-hidden cursor-pointer bg-white shadow-[0_4px_15px_rgba(0,0,0,0.08)] border border-gray-100/50 flex flex-col"
+                          style={{ minWidth: '220px', maxWidth: '280px' }}
+                        >
+                           <div className="p-4 pb-3 flex items-center gap-4">
+                               <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center shrink-0">
+                                  <ArrowRightLeft className="w-5 h-5 text-orange-400" />
+                               </div>
+                               <div className="flex flex-col flex-1 min-w-0">
+                                   <span className="text-gray-700 font-medium truncate text-[15px]">¥{msg.transfer.amount}</span>
+                                   <span className="text-gray-400 mt-0.5 text-[12px]">
+                                       {msg.transfer.status === 'accepted' ? '已收钱' : (msg.transfer.status === 'returned' ? '已退还' : '微信转账')}
+                                   </span>
+                               </div>
+                           </div>
+                           {msg.transfer.remark && (
+                               <div className="px-4 py-1.5 border-t border-gray-50 text-gray-400 text-[11px] bg-gray-50/50 truncate">
+                                   {msg.transfer.remark}
+                               </div>
+                           )}
+                        </div>
+                      ) : msg.location ? (
+                        <div className="rounded-[12px] overflow-hidden cursor-pointer bg-white shadow-sm border border-black/5" style={{ minWidth: '200px', maxWidth: '240px' }}>
+                           <div className="p-3 bg-white">
+                              <div className="text-gray-800 font-medium text-sm truncate">{msg.location.name}</div>
+                              {msg.location.address && <div className="text-gray-400 text-xs truncate mt-0.5">{msg.location.address}</div>}
+                           </div>
+                           <div className="h-24 bg-gray-100 relative flex items-center justify-center">
+                              <div className="absolute inset-0 opacity-40 bg-[url('https://picsum.photos/seed/map/400/200')] bg-cover bg-center"></div>
+                              <MapPin className="relative z-10 text-red-500 w-8 h-8 drop-shadow-md" />
+                           </div>
+                        </div>
+                      ) : msg.callRecord ? (
+                        <div className="flex items-center gap-2" onClick={() => setCallRecordModal({ isOpen: true, transcript: msg.callRecord.transcript })}>
+                           {msg.callRecord.callType === 'video' ? <Video className="w-5 h-5 text-gray-600" /> : <Mic className="w-5 h-5 text-gray-600" />}
+                           <span>通话时长 {(msg.callRecord.duration / 60) | 0}:{String(msg.callRecord.duration % 60).padStart(2, '0')}</span>
                         </div>
                       ) : (
                         msg.text && <span>{msg.text}</span>
@@ -1450,8 +1645,18 @@ export default function WeChatApp({
                 <Smile className="w-5 h-5 opacity-70" />
               </button>
             </div>
+            
             <button 
-              onClick={handleTriggerAIReply}
+              onClick={handleTriggerAIReplyGlobal}
+              className="w-11 h-11 rounded-full flex items-center justify-center shadow-md active:scale-90 transition-all border border-purple-200"
+              style={{ backgroundColor: 'white', color: '#9333ea' }}
+              title="请求 AI 回复"
+            >
+              <Wand2 className="w-5 h-5" />
+            </button>
+
+            <button 
+              onClick={handleSendMessage}
               className="w-11 h-11 rounded-full flex items-center justify-center shadow-md active:scale-90 transition-all"
               style={{ backgroundColor: chatSettings.fontColor, color: chatSettings.headerFooterColor }}
             >
@@ -1506,10 +1711,10 @@ export default function WeChatApp({
                   { icon: ImageIcon, label: '照片', onClick: () => setPhotoModal('choose') },
                   { icon: Camera, label: '拍摄', onClick: () => {} },
                   { icon: Video, label: '视频通话', onClick: () => { setShowPlusMenu(false); setCallChooseModal(true); } },
-                  { icon: MapPin, label: '位置', onClick: () => {} },
+                  { icon: MapPin, label: '位置', onClick: () => { setShowPlusMenu(false); setShowLocationModal(true); } },
                   { icon: Wallet, label: '红包', onClick: () => { setShowPlusMenu(false); setShowRedPacketSendModal(true); } },
                   { icon: Gift, label: '礼物', onClick: () => {} },
-                  { icon: ArrowRightLeft, label: '转账', onClick: () => {} },
+                  { icon: ArrowRightLeft, label: '转账', onClick: () => { setShowPlusMenu(false); setShowTransferModal(true); } },
                   { icon: Star, label: '收藏', onClick: () => {} },
                   { icon: UserSquare, label: '个人名片', onClick: () => {} },
                   { icon: File, label: '文件', onClick: () => {} },
