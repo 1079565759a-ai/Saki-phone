@@ -15,7 +15,6 @@ import { cn } from '../utils/cn';
 
 // Import sub-views
 import HomeView from './galagame/HomeView';
-import RecordsView from './galagame/RecordsView';
 import CommunityView from './galagame/CommunityView';
 import ProfileView from './galagame/ProfileView';
 import MyWorksView from './galagame/MyWorksView';
@@ -66,8 +65,6 @@ const GalaGameApp: React.FC<GalaGameAppProps> = ({ onClose, language = 'zh', isF
             onClose={onClose}
           />
         );
-      case 'records':
-        return <RecordsView onSelectGame={setSelectedGame} appState={appState} updateState={updateState} />;
       case 'community':
         return <CommunityView appState={appState} updateState={updateState} />;
       case 'profile':
@@ -91,35 +88,22 @@ const GalaGameApp: React.FC<GalaGameAppProps> = ({ onClose, language = 'zh', isF
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
-      className="absolute inset-0 z-50 bg-white flex flex-col font-sans text-gray-900 overflow-hidden"
+      className="absolute inset-0 z-[100] bg-gradient-to-b from-[#fdfbfb] to-[#f5f1f0] flex flex-col font-sans text-gray-900 overflow-hidden"
     >
       {showSplash && <Splash onComplete={() => setShowSplash(false)} />}
 
-      {/* System Header */}
-      <div className="h-12 border-b border-gray-100 flex items-center justify-between px-6 bg-white z-40">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 bg-green-500 rounded-none animate-pulse" />
-            <span className="text-[8px] font-mono font-bold uppercase tracking-widest text-gray-400">system.active</span>
-          </div>
-          <div className="h-3 w-px bg-gray-100" />
-          <span className="text-[8px] font-mono font-bold uppercase tracking-widest text-gray-400">v2.4.0_stable</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="text-[8px] font-mono font-bold text-gray-900 tracking-widest">15:27:00</span>
-          {!isFullscreen && (
-            <button 
-              onClick={onClose}
-              className="w-7 h-7 rounded-lg bg-gray-50 flex items-center justify-center hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-900 border border-gray-100"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-      </div>
+      {/* Universal Exit Button */}
+      {!isFullscreen && (
+        <button 
+          onClick={onClose}
+          className="absolute top-10 right-6 z-[200] p-2 bg-white/50 backdrop-blur-md rounded-full shadow-[0_2px_8px_rgba(212,154,159,0.2)] border border-[#fcefee] text-[#c5a3a5] transition-all focus:outline-none flex items-center justify-center hover:bg-white active:scale-95"
+        >
+          <X className="w-5 h-5" strokeWidth={1.5} />
+        </button>
+      )}
 
       {/* Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden relative z-10 pt-4">
         {renderContent()}
       </div>
 
@@ -189,28 +173,27 @@ const GalaGameApp: React.FC<GalaGameAppProps> = ({ onClose, language = 'zh', isF
       </AnimatePresence>
 
       {/* Bottom Nav */}
-      <div className="h-24 bg-white border-t border-gray-100 flex items-center justify-around px-4 pb-6 z-40">
+      <div className="h-24 bg-white/80 backdrop-blur-md border-t border-[#fcefee] flex items-center justify-around px-4 pb-6 z-40 relative">
         {[
-          { id: 'home', icon: Gamepad2, label: 'Home' },
-          { id: 'records', icon: History, label: 'History' },
-          { id: 'community', icon: Users, label: 'Community' },
-          { id: 'profile', icon: User, label: 'Profile' },
-          { id: 'my-works', icon: Library, label: 'Library' },
+          { id: 'home', icon: Gamepad2, label: '首页' },
+          { id: 'my-works', icon: Library, label: '创作' },
+          { id: 'community', icon: Users, label: '社区' },
+          { id: 'profile', icon: User, label: '我的' },
         ].map(tab => (
           <button 
             key={tab.id}
             onClick={() => setActiveTab(tab.id as Tab)}
             className={cn(
-              "flex flex-col items-center gap-2 transition-all relative px-2",
-              activeTab === tab.id ? "text-gray-900" : "text-gray-300 hover:text-gray-600"
+              "flex flex-col items-center gap-2 transition-all relative px-2 py-2 rounded-xl",
+              activeTab === tab.id ? "text-[#d49a9f]" : "text-[#c9b8b8] hover:text-[#c5a3a5]"
             )}
           >
-            <tab.icon className={cn("w-5 h-5", activeTab === tab.id ? "stroke-[1.5px]" : "stroke-[1px]")} />
-            <span className="text-[7px] font-bold tracking-[0.3em] uppercase">{tab.label}</span>
+            <tab.icon className={cn("w-6 h-6", activeTab === tab.id ? "stroke-[2px]" : "stroke-[1.5px]")} />
+            <span className="text-[10px] font-bold tracking-widest">{tab.label}</span>
             {activeTab === tab.id && (
               <motion.div 
-                layoutId="gala-tab-active"
-                className="absolute -top-10 w-1 h-1 bg-gray-900 rounded-none"
+                layoutId="sakulove-tab-active"
+                className="absolute -top-3 w-1.5 h-1.5 bg-[#d49a9f] rounded-full shadow-[0_0_8px_rgba(212,154,159,0.5)]"
               />
             )}
           </button>
