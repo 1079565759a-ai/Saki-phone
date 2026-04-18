@@ -37,6 +37,10 @@ body {
   }
 }
 
+@utility writing-vertical-rl {
+  writing-mode: vertical-rl;
+}
+
 /* Custom scrollbar for white theme */
 ::-webkit-scrollbar {
   width: 6px;

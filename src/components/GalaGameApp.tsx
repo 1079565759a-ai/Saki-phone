@@ -61,6 +61,7 @@ const GalaGameApp: React.FC<GalaGameAppProps> = ({ onClose, language = 'zh', isF
             onImportGame={() => showToast('Import feature coming soon...')}
             appState={appState}
             updateState={updateState}
+            onClose={onClose}
           />
         );
       case 'records':

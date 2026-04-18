@@ -199,23 +199,23 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onOpenWorldview, onOpenSettin
               <label className="text-[8px] font-bold uppercase tracking-[0.3em] text-gray-300">Display Name</label>
               <input 
                 type="text" 
-                value={profile.name}
-                onChange={e => setProfile(prev => ({ ...prev, name: e.target.value }))}
+                value={editName}
+                onChange={e => setEditName(e.target.value)}
                 className="w-full py-4 bg-white border-b border-gray-100 text-[11px] font-bold uppercase tracking-[0.2em] outline-none focus:border-gray-900 transition-all"
               />
             </div>
             <div className="space-y-4">
               <label className="text-[8px] font-bold uppercase tracking-[0.3em] text-gray-300">Signature</label>
               <textarea 
-                value={profile.signature}
-                onChange={e => setProfile(prev => ({ ...prev, signature: e.target.value }))}
-                className="w-full py-4 bg-white border-b border-gray-100 text-[11px] font-bold uppercase tracking-[0.2em] outline-none focus:border-gray-900 transition-all resize-none h-32"
+                value={editSignature}
+                onChange={e => setEditSignature(e.target.value)}
+                className="w-full py-4 bg-white border-b border-gray-100 text-[11px] outline-none focus:border-gray-900 transition-all resize-none h-32"
               />
             </div>
           </div>
 
           <button 
-            onClick={() => setIsEditing(false)}
+            onClick={handleSaveProfile}
             className="w-full py-5 bg-gray-900 text-white text-[10px] font-bold tracking-[0.4em] uppercase"
           >
             Save Changes

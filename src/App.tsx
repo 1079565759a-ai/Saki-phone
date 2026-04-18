@@ -78,6 +78,7 @@ import { cn } from './utils/cn';
 import { GoogleGenAI } from "@google/genai";
 import OurTale from './components/OurTale';
 
+import Splash from './components/Splash';
 import WeChatApp from './components/WeChatApp';
 import GalaGameApp from './components/GalaGameApp';
 import RadioApp from './components/RadioApp';
@@ -871,6 +872,7 @@ const MusicFloatingWindow = ({
 // --- Main App ---
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -1620,19 +1622,20 @@ NSFW设定(18+)：${selectedChar.nsfw}
   };
 
   return (
-    <div className="fixed inset-0 bg-[#f8f8f8] flex items-center justify-center font-sans selection:bg-pink-50/30 overflow-hidden">
-      {/* Phone Frame Wrapper */}
-      <div className={cn(
-        "relative transition-all duration-500 ease-in-out overflow-hidden flex flex-col",
-        effectiveFullscreen 
-          ? "w-full h-full rounded-none border-0" 
-          : "w-[390px] h-[844px] rounded-[3rem] border-[8px] border-gray-900 shadow-2xl"
-      )}>
-        {/* Main Content */}
+    <>
+      <div className="fixed inset-0 bg-[#f8f8f8] flex items-center justify-center font-sans selection:bg-pink-50/30 overflow-hidden">
+        {/* Phone Frame Wrapper */}
         <div className={cn(
-          "relative w-full h-full bg-white overflow-hidden flex flex-col",
-          appState.photoFilter === 'bw' && "photo-filter-bw"
+          "relative transition-all duration-500 ease-in-out overflow-hidden flex flex-col",
+          effectiveFullscreen 
+            ? "w-full h-full rounded-none border-0" 
+            : "w-[390px] h-[844px] rounded-[3rem] border-[8px] border-gray-900 shadow-2xl"
         )}>
+          {/* Main Content */}
+          <div className={cn(
+            "relative w-full h-full bg-white overflow-hidden flex flex-col",
+            appState.photoFilter === 'bw' && "photo-filter-bw"
+          )}>
         
         {/* Background Decoration / Wallpaper */}
         {appState.wallpaper ? (
@@ -2927,7 +2930,9 @@ NSFW设定(18+)：${selectedChar.nsfw}
         {/* Home Indicator */}
         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-32 h-1 bg-gray-200 rounded-full z-30" />
       </div>
+     </div>
     </div>
-  </div>
+    {showSplash && <Splash onComplete={() => setShowSplash(false)} />}
+   </>
   );
 }
