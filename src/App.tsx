@@ -78,7 +78,6 @@ import { cn } from './utils/cn';
 import { GoogleGenAI } from "@google/genai";
 import OurTale from './components/OurTale';
 
-import Splash from './components/Splash';
 import WeChatApp from './components/WeChatApp';
 import GalaGameApp from './components/GalaGameApp';
 import RadioApp from './components/RadioApp';
@@ -872,7 +871,6 @@ const MusicFloatingWindow = ({
 // --- Main App ---
 
 export default function App() {
-  const [showSplash, setShowSplash] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -1044,7 +1042,7 @@ export default function App() {
         chat: "CHAT",
         ourtale: "OURTALE",
         moment: "MOMENT",
-        galagame: "GALAGAME",
+        galagame: "SakuLove",
         phone: "PHONE",
         messages: "MESSAGES",
         settings: "SETTINGS",
@@ -1084,6 +1082,10 @@ export default function App() {
           Object.keys(parsed.appLabels).forEach(key => {
             if (parsed.appLabels[key]) mergedLabels[key] = parsed.appLabels[key];
           });
+          // Force update the galagame label if it was the default
+          if (parsed.appLabels.galagame === "GALAGAME" || parsed.appLabels.galagame === "樱咲机") {
+            mergedLabels.galagame = "SakuLove";
+          }
         }
 
         const mergedIcons = { ...initialState.appIcons };
@@ -1622,9 +1624,8 @@ NSFW设定(18+)：${selectedChar.nsfw}
   };
 
   return (
-    <>
-      <div className="fixed inset-0 bg-[#f8f8f8] flex items-center justify-center font-sans selection:bg-pink-50/30 overflow-hidden">
-        {/* Phone Frame Wrapper */}
+    <div className="fixed inset-0 bg-[#f8f8f8] flex items-center justify-center font-sans selection:bg-pink-50/30 overflow-hidden">
+      {/* Phone Frame Wrapper */}
         <div className={cn(
           "relative transition-all duration-500 ease-in-out overflow-hidden flex flex-col",
           effectiveFullscreen 
@@ -2930,9 +2931,7 @@ NSFW设定(18+)：${selectedChar.nsfw}
         {/* Home Indicator */}
         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-32 h-1 bg-gray-200 rounded-full z-30" />
       </div>
-     </div>
     </div>
-    {showSplash && <Splash onComplete={() => setShowSplash(false)} />}
-   </>
+  </div>
   );
 }

@@ -24,6 +24,7 @@ import StoreView from './galagame/StoreView';
 import WorldviewGenerator from './galagame/WorldviewGenerator';
 import CreationFlow from './galagame/CreationFlow';
 import SettingsView from './galagame/SettingsView';
+import Splash from './Splash';
 
 interface GalaGameAppProps {
   onClose: () => void;
@@ -42,6 +43,7 @@ const GalaGameApp: React.FC<GalaGameAppProps> = ({ onClose, language = 'zh', isF
   const [showWorldview, setShowWorldview] = useState(false);
   const [showCreationFlow, setShowCreationFlow] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
 
   const worldviews = appState.galaWorldviews || [];
@@ -89,8 +91,10 @@ const GalaGameApp: React.FC<GalaGameAppProps> = ({ onClose, language = 'zh', isF
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
-      className="absolute inset-0 z-50 bg-white flex flex-col font-sans text-gray-900"
+      className="absolute inset-0 z-50 bg-white flex flex-col font-sans text-gray-900 overflow-hidden"
     >
+      {showSplash && <Splash onComplete={() => setShowSplash(false)} />}
+
       {/* System Header */}
       <div className="h-12 border-b border-gray-100 flex items-center justify-between px-6 bg-white z-40">
         <div className="flex items-center gap-4">

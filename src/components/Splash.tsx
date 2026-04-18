@@ -1,9 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import clsx from 'clsx';
 
 export default function Splash({ onComplete }: { onComplete: () => void }) {
   const [stage, setStage] = useState(0);
+  const onCompleteRef = useRef(onComplete);
+
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   useEffect(() => {
     // Sequence timing
@@ -17,8 +22,10 @@ export default function Splash({ onComplete }: { onComplete: () => void }) {
     const t3 = setTimeout(() => setStage(3), 4500);
     const t4 = setTimeout(() => {
       setStage(4);
-      setTimeout(onComplete, 1200); // give time to fade out the wrapper
-    }, 7000);
+      setTimeout(() => {
+        onCompleteRef.current();
+      }, 1200); // give time to fade out the wrapper
+    }, 6000);
 
     return () => {
       clearTimeout(t1);
@@ -26,7 +33,7 @@ export default function Splash({ onComplete }: { onComplete: () => void }) {
       clearTimeout(t3);
       clearTimeout(t4);
     };
-  }, [onComplete]);
+  }, []);
 
   return (
     <AnimatePresence>
@@ -37,7 +44,7 @@ export default function Splash({ onComplete }: { onComplete: () => void }) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 1.2, ease: "easeInOut" }}
-          className="fixed inset-0 z-[10000] flex items-center justify-center overflow-hidden bg-gradient-to-br from-[#fdfbfb] via-[#fcefee] to-[#f5f1f0]"
+          className="absolute inset-0 z-[100] flex items-center justify-center overflow-hidden bg-gradient-to-br from-[#fdfbfb] via-[#fcefee] to-[#f5f1f0]"
         >
           {/* Background Petals/Mist */}
           <motion.div 
