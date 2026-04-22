@@ -93,14 +93,12 @@ const GalaGameApp: React.FC<GalaGameAppProps> = ({ onClose, language = 'zh', isF
       {showSplash && <Splash onComplete={() => setShowSplash(false)} />}
 
       {/* Universal Exit Button */}
-      {!isFullscreen && (
-        <button 
-          onClick={onClose}
-          className="absolute top-10 right-6 z-[200] p-2 bg-white/50 backdrop-blur-md rounded-full shadow-[0_2px_8px_rgba(212,154,159,0.2)] border border-[#fcefee] text-[#c5a3a5] transition-all focus:outline-none flex items-center justify-center hover:bg-white active:scale-95"
-        >
-          <X className="w-5 h-5" strokeWidth={1.5} />
-        </button>
-      )}
+      <button 
+        onClick={onClose}
+        className="absolute top-10 right-6 z-[200] p-2 bg-white/50 backdrop-blur-md rounded-full shadow-[0_2px_8px_rgba(212,154,159,0.2)] border border-[#fcefee] text-[#c5a3a5] transition-all focus:outline-none flex items-center justify-center hover:bg-white active:scale-95"
+      >
+        <X className="w-5 h-5" strokeWidth={1.5} />
+      </button>
 
       {/* Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden relative z-10 pt-4">
