@@ -139,6 +139,20 @@ const GalaGameApp: React.FC<GalaGameAppProps> = ({ onClose, language = 'zh', isF
             onClose={() => setShowCreationFlow(false)} 
             worldviews={worldviews}
             onPublish={(work) => {
+              // Add the new work to myGames
+              const newWork = {
+                id: Date.now().toString(),
+                title: work.title || '无题作品',
+                cover: work.cover || 'https://images.unsplash.com/photo-1493246507139-91e8fad9978e?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80',
+                author: appState.currentUser?.nickname || '我',
+                playCount: 0,
+                rating: 0,
+                tags: work.tags || [],
+                likes: 0
+              };
+              const existingGames = appState.galaMyGames || [];
+              updateState('galaMyGames', [newWork, ...existingGames]);
+              
               setShowCreationFlow(false);
               showToast('作品发布成功');
             }}

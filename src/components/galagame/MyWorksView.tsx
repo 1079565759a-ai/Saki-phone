@@ -118,10 +118,10 @@ const MyWorksView: React.FC<MyWorksViewProps> = ({ onOpenCreationFlow, appState,
       </div>
 
       <div className="relative z-10 px-6 pt-4 pb-8">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-4">
           {works.map((work: any) => (
             <motion.div key={work.id} layoutId={`work-${work.id}`} className="group relative rounded-2xl bg-white/60 backdrop-blur-md shadow-[0_8px_24px_rgba(212,154,159,0.08)] border border-[#ede6e6] overflow-hidden flex flex-col">
-              <div className="relative aspect-[3/4] w-full overflow-hidden bg-[#fcefee]/50">
+              <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#fcefee]/50">
                 <img src={work.cover} alt={work.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" referrerPolicy="no-referrer" />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#c5a3a5]/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">

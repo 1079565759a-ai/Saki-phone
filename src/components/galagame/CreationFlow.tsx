@@ -207,31 +207,65 @@ const CreationFlow: React.FC<CreationFlowProps> = ({ onClose, onPublish, worldvi
 
               {/* Protagonist */}
               <section className="space-y-6">
-                <h4 className="text-[8px] font-bold uppercase tracking-[0.3em] text-gray-300">Protagonist / 主角</h4>
-                <div className="p-6 bg-white border border-gray-100 flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-none bg-gray-50 border border-gray-100" />
-                    <span className="text-[10px] font-bold text-gray-900 uppercase tracking-widest">我</span>
-                  </div>
-                  <ChevronDown className="w-4 h-4 text-gray-200" />
+                <h4 className="text-[8px] font-bold uppercase tracking-[0.3em] text-gray-300">主角</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  {(appState?.galaCharacters || []).map((char: any, i: number) => (
+                    <div 
+                      key={`prot-${i}`}
+                      onClick={() => setFormData(prev => ({ ...prev, mainCharacter: char.name }))}
+                      className={cn(
+                        "p-4 bg-white border cursor-pointer flex flex-col items-center gap-3 transition-colors",
+                        formData.mainCharacter === char.name ? "border-gray-900 bg-gray-50" : "border-gray-100 hover:border-gray-300"
+                      )}
+                    >
+                      <div className="w-12 h-12 rounded-none bg-gray-50 border border-gray-100 flex items-center justify-center">
+                        {formData.mainCharacter === char.name && <Check className="w-4 h-4 text-gray-900" />}
+                      </div>
+                      <span className="text-[10px] font-bold text-gray-900 uppercase tracking-widest">{char.name}</span>
+                    </div>
+                  ))}
+                  {(!appState?.galaCharacters || appState.galaCharacters.length === 0) && (
+                    <div className="col-span-2 p-4 border border-dashed border-gray-200 text-center text-[10px] text-gray-400">
+                      请先在“我的”页面创建角色
+                    </div>
+                  )}
                 </div>
               </section>
 
               {/* Other Protagonists */}
               <section className="space-y-6">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-[8px] font-bold uppercase tracking-[0.3em] text-gray-300">Other Protagonists</h4>
-                  <button className="p-1.5 border border-gray-100 text-gray-400 hover:border-gray-900 hover:text-gray-900 transition-all">
-                    <Plus className="w-4 h-4" />
-                  </button>
+                  <h4 className="text-[8px] font-bold uppercase tracking-[0.3em] text-gray-300">其他参演角色</h4>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  {[1, 2].map(i => (
-                    <div key={i} className="p-4 bg-white border border-gray-50 flex flex-col items-center gap-3">
-                      <div className="w-12 h-12 rounded-none bg-gray-50 border border-gray-100" />
-                      <span className="text-[8px] font-bold text-gray-300 uppercase tracking-widest">Select Character</span>
+                  {(appState?.galaCharacters || []).map((char: any, i: number) => {
+                    const isSelected = formData.otherCharacters?.includes(char.name) || false;
+                    return (
+                      <div 
+                        key={`other-${i}`}
+                        onClick={() => {
+                          const currentOthers = formData.otherCharacters || [];
+                          const newOthers = isSelected 
+                            ? currentOthers.filter((c: string) => c !== char.name)
+                            : [...currentOthers, char.name];
+                          setFormData(prev => ({ ...prev, otherCharacters: newOthers }));
+                        }}
+                        className={cn(
+                          "p-4 bg-white border cursor-pointer flex flex-col items-center gap-3 transition-colors relative",
+                          isSelected ? "border-gray-900 bg-gray-50 text-gray-900" : "border-gray-50 hover:border-gray-200 text-gray-400"
+                        )}
+                      >
+                        {isSelected && <Check className="absolute top-2 right-2 w-3 h-3 text-gray-900" />}
+                        <div className="w-12 h-12 rounded-none bg-gray-50 border border-gray-100" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest">{char.name}</span>
+                      </div>
+                    );
+                  })}
+                  {(!appState?.galaCharacters || appState.galaCharacters.length === 0) && (
+                    <div className="col-span-2 p-4 border border-dashed border-gray-200 text-center text-[10px] text-gray-400">
+                      请先在“我的”页面创建角色
                     </div>
-                  ))}
+                  )}
                 </div>
               </section>
             </div>
