@@ -20,9 +20,21 @@ interface SettingsViewProps {
 }
 
 const SettingsView: React.FC<SettingsViewProps> = ({ onClose, appState, updateState }) => {
-  const [activeSection, setActiveSection] = useState<'main' | 'interface'>('main');
+  const [activeSection, setActiveSection] = useState<'main' | 'interface' | 'api'>('main');
+
+  const [customApiKey, setCustomApiKey] = useState(localStorage.getItem('custom_api_key') || '');
+  const [customApiUrl, setCustomApiUrl] = useState(localStorage.getItem('custom_api_url') || '');
+  const [customApiModel, setCustomApiModel] = useState(localStorage.getItem('custom_api_model') || 'gemini-3-flash-preview');
+
+  const handleSaveApiSettings = () => {
+    localStorage.setItem('custom_api_key', customApiKey);
+    localStorage.setItem('custom_api_url', customApiUrl);
+    localStorage.setItem('custom_api_model', customApiModel);
+    alert('API 设置已保存');
+  };
 
   const mainSettings = [
+    { id: 'api', icon: Database, label: 'API 设置', desc: 'AI Model Options' },
     { id: 'interface', icon: Monitor, label: '界面设置', desc: 'Interface & Display' },
     { id: 'notifications', icon: Bell, label: '通知设置', desc: 'Alerts & Messages' },
     { id: 'privacy', icon: Shield, label: '隐私安全', desc: 'Privacy & Security' },
@@ -137,6 +149,30 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onClose, appState, updateSt
                   <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-900">字体大小</span>
                   <span className="text-[8px] font-mono font-bold text-gray-300">MEDIUM</span>
                 </div>
+              </div>
+            </motion.div>
+          ) : activeSection === 'api' ? (
+            <motion.div 
+              key="api"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="p-8 space-y-8"
+            >
+              <div className="space-y-6">
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-900 block mb-2">Gemini API Key</label>
+                  <input type="password" value={customApiKey} onChange={e => setCustomApiKey(e.target.value)} className="w-full bg-gray-50 border border-gray-100 p-3 text-xs" placeholder="AI Studio Key..." />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-900 block mb-2">Base URL (可为空)</label>
+                  <input type="text" value={customApiUrl} onChange={e => setCustomApiUrl(e.target.value)} className="w-full bg-gray-50 border border-gray-100 p-3 text-xs" placeholder="https://..." />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-900 block mb-2">Model</label>
+                  <input type="text" value={customApiModel} onChange={e => setCustomApiModel(e.target.value)} className="w-full bg-gray-50 border border-gray-100 p-3 text-xs" placeholder="gemini-3-flash-preview" />
+                </div>
+                <button onClick={handleSaveApiSettings} className="w-full py-4 bg-gray-900 text-white font-bold tracking-[0.2em] text-[10px]">保存 API 设置</button>
               </div>
             </motion.div>
           ) : null}

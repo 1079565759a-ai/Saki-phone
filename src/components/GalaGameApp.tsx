@@ -23,6 +23,10 @@ import StoreView from './galagame/StoreView';
 import WorldviewGenerator from './galagame/WorldviewGenerator';
 import CreationFlow from './galagame/CreationFlow';
 import SettingsView from './galagame/SettingsView';
+import { CharacterManagerView } from './galagame/CharacterManagerView';
+import { SceneManagerView } from './galagame/SceneManagerView';
+import { StyleManagerView } from './galagame/StyleManagerView';
+import { GamePlayView } from './galagame/GamePlayView';
 import Splash from './Splash';
 
 interface GalaGameAppProps {
@@ -42,6 +46,10 @@ const GalaGameApp: React.FC<GalaGameAppProps> = ({ onClose, language = 'zh', isF
   const [showWorldview, setShowWorldview] = useState(false);
   const [showCreationFlow, setShowCreationFlow] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showCharacterManager, setShowCharacterManager] = useState(false);
+  const [showSceneManager, setShowSceneManager] = useState(false);
+  const [showStyleManager, setShowStyleManager] = useState(false);
+  const [playingGame, setPlayingGame] = useState<any>(null);
   const [showSplash, setShowSplash] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -72,6 +80,9 @@ const GalaGameApp: React.FC<GalaGameAppProps> = ({ onClose, language = 'zh', isF
           <ProfileView 
             onOpenWorldview={() => setShowWorldview(true)} 
             onOpenSettings={() => setShowSettings(true)}
+            onOpenCharacters={() => setShowCharacterManager(true)}
+            onOpenScenes={() => setShowSceneManager(true)}
+            onOpenStyles={() => setShowStyleManager(true)}
             appState={appState}
             updateState={updateState}
           />
@@ -111,6 +122,15 @@ const GalaGameApp: React.FC<GalaGameAppProps> = ({ onClose, language = 'zh', isF
           <GameDetailView 
             game={selectedGame} 
             onClose={() => setSelectedGame(null)} 
+            appState={appState}
+            updateState={updateState}
+            onPlay={() => setPlayingGame(selectedGame)}
+          />
+        )}
+        {playingGame && (
+          <GamePlayView
+            game={playingGame}
+            onClose={() => setPlayingGame(null)}
             appState={appState}
             updateState={updateState}
           />
@@ -163,6 +183,27 @@ const GalaGameApp: React.FC<GalaGameAppProps> = ({ onClose, language = 'zh', isF
         {showSettings && (
           <SettingsView 
             onClose={() => setShowSettings(false)} 
+            appState={appState}
+            updateState={updateState}
+          />
+        )}
+        {showCharacterManager && (
+          <CharacterManagerView 
+            onClose={() => setShowCharacterManager(false)} 
+            appState={appState}
+            updateState={updateState}
+          />
+        )}
+        {showSceneManager && (
+          <SceneManagerView 
+            onClose={() => setShowSceneManager(false)} 
+            appState={appState}
+            updateState={updateState}
+          />
+        )}
+        {showStyleManager && (
+          <StyleManagerView 
+            onClose={() => setShowStyleManager(false)} 
             appState={appState}
             updateState={updateState}
           />

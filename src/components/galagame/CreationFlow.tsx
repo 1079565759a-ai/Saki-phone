@@ -35,7 +35,9 @@ const CreationFlow: React.FC<CreationFlowProps> = ({ onClose, onPublish, worldvi
     cover: 'https://picsum.photos/seed/newgame/1280/720',
     worldview: null as any,
     protagonist: '我',
-    otherProtagonists: [] as string[],
+    otherCharacters: [] as string[],
+    scenes: [] as string[],
+    style: null as any
   });
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -96,7 +98,7 @@ const CreationFlow: React.FC<CreationFlowProps> = ({ onClose, onPublish, worldvi
                 className="aspect-[16/9] relative bg-gray-50 border border-gray-100 group cursor-pointer overflow-hidden"
                 onClick={() => fileInputRef.current?.click()}
               >
-                <img src={formData.cover} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" />
+                <img src={formData.cover} className="w-full h-full object-cover transition-all duration-700" />
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/60 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity">
                   <ImageIcon className="w-6 h-6 text-gray-900" strokeWidth={1} />
                   <span className="text-[7px] font-bold uppercase tracking-[0.2em] mt-2">Upload Cover</span>
@@ -264,6 +266,65 @@ const CreationFlow: React.FC<CreationFlowProps> = ({ onClose, onPublish, worldvi
                   {(!appState?.galaCharacters || appState.galaCharacters.length === 0) && (
                     <div className="col-span-2 p-4 border border-dashed border-gray-200 text-center text-[10px] text-gray-400">
                       请先在“我的”页面创建角色
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              {/* Scenes */}
+              <section className="space-y-6">
+                <h4 className="text-[8px] font-bold uppercase tracking-[0.3em] text-gray-300">场景地点集合</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  {(appState?.galaScenes || []).map((scene: any, i: number) => {
+                    const isSelected = formData.scenes?.includes(scene.name) || false;
+                    return (
+                      <div 
+                        key={`scene-${i}`}
+                        onClick={() => {
+                          const currentScenes = formData.scenes || [];
+                          const newScenes = isSelected 
+                            ? currentScenes.filter((s: string) => s !== scene.name)
+                            : [...currentScenes, scene.name];
+                          setFormData(prev => ({ ...prev, scenes: newScenes }));
+                        }}
+                        className={cn(
+                          "p-4 bg-white border cursor-pointer flex flex-col items-center gap-3 transition-colors relative",
+                          isSelected ? "border-gray-900 bg-gray-50 text-gray-900" : "border-gray-50 hover:border-gray-200 text-gray-400"
+                        )}
+                      >
+                        {isSelected && <Check className="absolute top-2 right-2 w-3 h-3 text-gray-900" />}
+                        <span className="text-[10px] font-bold uppercase tracking-widest">{scene.name}</span>
+                      </div>
+                    );
+                  })}
+                  {(!appState?.galaScenes || appState.galaScenes.length === 0) && (
+                    <div className="col-span-2 p-4 border border-dashed border-gray-200 text-center text-[10px] text-gray-400">
+                      请先在“我的”页面创建场景
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              {/* Styles */}
+              <section className="space-y-6">
+                <h4 className="text-[8px] font-bold uppercase tracking-[0.3em] text-gray-300">AI创写参考文风</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  {(appState?.galaStyles || []).map((style: any, i: number) => (
+                    <div 
+                      key={`style-${i}`}
+                      onClick={() => setFormData(prev => ({ ...prev, style: style.name }))}
+                      className={cn(
+                        "p-4 bg-white border cursor-pointer flex flex-col items-center gap-3 transition-colors relative",
+                        formData.style === style.name ? "border-gray-900 bg-gray-50 text-gray-900" : "border-gray-50 hover:border-gray-200 text-gray-400"
+                      )}
+                    >
+                      {formData.style === style.name && <Check className="absolute top-2 right-2 w-3 h-3 text-gray-900" />}
+                      <span className="text-[10px] font-bold uppercase tracking-widest">{style.name}</span>
+                    </div>
+                  ))}
+                  {(!appState?.galaStyles || appState.galaStyles.length === 0) && (
+                    <div className="col-span-2 p-4 border border-dashed border-gray-200 text-center text-[10px] text-gray-400">
+                      请先在“我的”页面创建文风
                     </div>
                   )}
                 </div>

@@ -79,7 +79,7 @@ const RecordsView: React.FC<RecordsViewProps> = ({ onSelectGame, appState, updat
           >
             <div className="absolute top-0 left-0 w-1 h-1 bg-gray-900 opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="w-20 h-20 bg-gray-50 rounded-none overflow-hidden shrink-0 border border-gray-100 p-1 relative">
-              <img src={record.cover} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" referrerPolicy="no-referrer" />
+              <img src={record.cover} className="w-full h-full object-cover transition-all duration-700" referrerPolicy="no-referrer" />
               <button 
                 onClick={(e) => triggerImageUpload(record.id, e)}
                 className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20"

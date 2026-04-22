@@ -1032,6 +1032,8 @@ export default function App() {
       galaSakura: 450,
       galaSignature: '在文字的世界里寻找永恒的瞬间。',
       galaWorldviews: [] as any[],
+      galaScenes: [] as any[],
+      galaStyles: [] as any[],
       galaRecords: [
         { id: 1, title: '月下孤影', lastPlayed: '2小时前', progress: '45%', cover: 'https://picsum.photos/seed/hot1/1280/720' },
         { id: 3, title: '深宫计', lastPlayed: '昨天', progress: '80%', cover: 'https://picsum.photos/seed/hot3/1280/720' },

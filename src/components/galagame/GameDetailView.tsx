@@ -20,11 +20,12 @@ import { compressImage } from '../../utils/image';
 interface GameDetailViewProps {
   game: any;
   onClose: () => void;
+  onPlay?: () => void;
   appState: any;
   updateState: (key: string, value: any) => void;
 }
 
-const GameDetailView: React.FC<GameDetailViewProps> = ({ game, onClose, appState, updateState }) => {
+const GameDetailView: React.FC<GameDetailViewProps> = ({ game, onClose, onPlay, appState, updateState }) => {
   const [isLiked, setIsLiked] = useState(false);
   const [isCollected, setIsCollected] = useState(false);
   const [showRanking, setShowRanking] = useState(false);
@@ -228,7 +229,7 @@ const GameDetailView: React.FC<GameDetailViewProps> = ({ game, onClose, appState
               <div className="absolute bottom-0 inset-x-0 h-1/3 bg-gradient-to-t from-white/60 to-transparent z-10 pointer-events-none" />
               <div className="absolute top-0 left-0 w-full h-1 bg-gray-300 z-20" />
               <div className="w-full aspect-[3/4] overflow-hidden rounded-lg relative z-0 group">
-                <img src={characters[1].photo} className="w-full h-full object-cover grayscale" />
+                <img src={characters[1].photo} className="w-full h-full object-cover" />
                 <button 
                   onClick={(e) => triggerImageUpload(characters[1].id, e)}
                   className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20"
@@ -266,7 +267,7 @@ const GameDetailView: React.FC<GameDetailViewProps> = ({ game, onClose, appState
               <div className="absolute bottom-0 inset-x-0 h-1/3 bg-gradient-to-t from-white/60 to-transparent z-10 pointer-events-none" />
               <div className="absolute top-0 left-0 w-full h-1 bg-gray-300 z-20" />
               <div className="w-full aspect-[3/4] overflow-hidden rounded-lg relative z-0 group">
-                <img src={characters[2].photo} className="w-full h-full object-cover grayscale" />
+                <img src={characters[2].photo} className="w-full h-full object-cover" />
                 <button 
                   onClick={(e) => triggerImageUpload(characters[2].id, e)}
                   className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20"
@@ -311,7 +312,10 @@ const GameDetailView: React.FC<GameDetailViewProps> = ({ game, onClose, appState
 
       {/* Floating Play Button */}
       <div className="fixed bottom-12 left-0 right-0 px-8 z-50">
-        <button className="w-full py-5 bg-gray-900 text-white text-[11px] font-bold tracking-[0.4em] uppercase rounded-none hover:bg-black transition-all flex items-center justify-center gap-4 shadow-2xl">
+        <button 
+          onClick={onPlay}
+          className="w-full py-5 bg-gray-900 text-white text-[11px] font-bold tracking-[0.4em] uppercase rounded-none hover:bg-black transition-all flex items-center justify-center gap-4 shadow-2xl"
+        >
           <Play className="w-4 h-4 fill-current" />
           Enter Game
         </button>
@@ -338,7 +342,7 @@ const GameDetailView: React.FC<GameDetailViewProps> = ({ game, onClose, appState
                   <div className="w-full aspect-[3/4] rounded-xl border border-white/50 bg-white/40 backdrop-blur-md p-1 overflow-hidden relative shadow-[0_8px_32px_rgba(0,0,0,0.1)] group">
                     <div className="absolute top-0 inset-x-0 h-1/3 bg-gradient-to-b from-white/60 to-transparent z-10 pointer-events-none" />
                     <div className="absolute bottom-0 inset-x-0 h-1/3 bg-gradient-to-t from-white/60 to-transparent z-10 pointer-events-none" />
-                    <img src={characters[1].photo} className="w-full h-full object-cover rounded-lg relative z-0 grayscale" />
+                    <img src={characters[1].photo} className="w-full h-full object-cover rounded-lg relative z-0" />
                     <button 
                       onClick={(e) => triggerImageUpload(characters[1].id, e)}
                       className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20"
@@ -372,7 +376,7 @@ const GameDetailView: React.FC<GameDetailViewProps> = ({ game, onClose, appState
                   <div className="w-full aspect-[3/4] rounded-xl border border-white/50 bg-white/40 backdrop-blur-md p-1 overflow-hidden relative shadow-[0_8px_32px_rgba(0,0,0,0.1)] group">
                     <div className="absolute top-0 inset-x-0 h-1/3 bg-gradient-to-b from-white/60 to-transparent z-10 pointer-events-none" />
                     <div className="absolute bottom-0 inset-x-0 h-1/3 bg-gradient-to-t from-white/60 to-transparent z-10 pointer-events-none" />
-                    <img src={characters[2].photo} className="w-full h-full object-cover rounded-lg relative z-0 grayscale" />
+                    <img src={characters[2].photo} className="w-full h-full object-cover rounded-lg relative z-0" />
                     <button 
                       onClick={(e) => triggerImageUpload(characters[2].id, e)}
                       className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20"

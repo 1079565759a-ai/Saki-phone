@@ -64,7 +64,7 @@ const CommunityView: React.FC<CommunityViewProps> = ({ appState, updateState }) 
           <div key={post.id} className="p-8 hover:bg-gray-50 transition-all cursor-pointer group">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-6 h-6 rounded-none border border-gray-100 bg-gray-50 overflow-hidden">
-                <img src={`https://picsum.photos/seed/${post.author}/100/100`} className="w-full h-full object-cover grayscale opacity-60 group-hover:grayscale-0 group-hover:opacity-100 transition-all" />
+                <img src={`https://picsum.photos/seed/${post.author}/100/100`} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-all" />
               </div>
               <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">{post.author}</span>
               <span className="text-[8px] text-gray-200 font-mono">/ {post.time}</span>
