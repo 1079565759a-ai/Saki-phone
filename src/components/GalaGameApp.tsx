@@ -95,7 +95,7 @@ const GalaGameApp: React.FC<GalaGameAppProps> = ({ onClose, language = 'zh', isF
       {/* Universal Exit Button */}
       <button 
         onClick={onClose}
-        className="absolute top-10 right-6 z-[200] p-2 bg-white/50 backdrop-blur-md rounded-full shadow-[0_2px_8px_rgba(212,154,159,0.2)] border border-[#fcefee] text-[#c5a3a5] transition-all focus:outline-none flex items-center justify-center hover:bg-white active:scale-95"
+        className="absolute top-4 right-4 z-[200] p-1.5 bg-white/50 backdrop-blur-md rounded-md shadow-sm border border-[#fcefee] text-[#c5a3a5] transition-all focus:outline-none flex items-center justify-center hover:bg-white active:scale-95"
       >
         <X className="w-5 h-5" strokeWidth={1.5} />
       </button>

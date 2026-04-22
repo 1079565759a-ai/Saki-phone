@@ -49,7 +49,7 @@ const HomeView: React.FC<HomeViewProps> = ({ onSelectGame, onOpenStore, appState
       <div className="relative z-10 px-6 py-6 space-y-10">
         
         {/* Search Bar Replica - standard UI format */}
-        <div className="flex items-center gap-3 w-full bg-gray-50 px-4 py-3 rounded-xl border border-gray-100">
+        <div className="flex items-center gap-3 w-full bg-gray-50 px-4 py-3 rounded-lg border border-gray-200">
           <Search className="w-4 h-4 text-gray-400" />
           <input type="text" placeholder="探索未知的世界..." className="bg-transparent flex-1 outline-none text-sm text-gray-900 placeholder:text-gray-400" />
         </div>
@@ -60,14 +60,10 @@ const HomeView: React.FC<HomeViewProps> = ({ onSelectGame, onOpenStore, appState
             {banners.map((banner: any, i: number) => (
               <motion.div 
                 key={i}
-                className="w-[85%] shrink-0 snap-center rounded-2xl overflow-hidden aspect-[16/9] relative shadow-sm cursor-pointer border border-gray-100"
+                className="w-[85%] shrink-0 snap-center rounded-lg overflow-hidden aspect-[16/9] relative cursor-pointer border border-gray-200"
                 whileTap={{ scale: 0.98 }}
               >
                 <img src={banner.image || banner.cover} alt={banner.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                <div className="absolute bottom-4 left-4 right-4">
-                  <h2 className="text-white text-lg tracking-widest font-bold mb-1 truncate">{banner.title || '活动焦点'}</h2>
-                </div>
               </motion.div>
             ))}
           </div>
@@ -81,8 +77,8 @@ const HomeView: React.FC<HomeViewProps> = ({ onSelectGame, onOpenStore, appState
           </div>
           <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-6 px-6">
             {hotGames.map((game: any, idx: number) => (
-              <div key={idx} onClick={() => onSelectGame(game)} className="w-32 shrink-0 cursor-pointer space-y-2">
-                <div className="w-full aspect-[3/4] rounded-xl overflow-hidden shadow-sm border border-gray-100 relative group">
+              <div key={idx} onClick={() => onSelectGame(game)} className="w-[200px] shrink-0 cursor-pointer space-y-2">
+                <div className="w-full aspect-[16/9] rounded-lg overflow-hidden border border-gray-200 relative group bg-gray-50">
                   <img src={game.cover} alt={game.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" referrerPolicy="no-referrer" />
                   <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-md px-1.5 py-0.5 rounded flex items-center gap-1 text-white text-[10px]">
                     <Star className="w-3 h-3 fill-current text-yellow-400" />
@@ -108,7 +104,7 @@ const HomeView: React.FC<HomeViewProps> = ({ onSelectGame, onOpenStore, appState
             <div className="grid grid-cols-2 gap-4">
               {myGames.map((game: any, idx: number) => (
                 <div key={idx} onClick={() => onSelectGame(game)} className="cursor-pointer space-y-2">
-                  <div className="w-full aspect-[3/4] rounded-xl overflow-hidden shadow-sm border border-gray-100 group">
+                  <div className="w-full aspect-[16/9] rounded-lg overflow-hidden border border-gray-200 group bg-gray-50">
                     <img src={game.cover} alt={game.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" referrerPolicy="no-referrer" />
                   </div>
                   <div>
