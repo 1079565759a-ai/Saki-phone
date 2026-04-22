@@ -50,8 +50,15 @@ const GalaGameApp: React.FC<GalaGameAppProps> = ({ onClose, language = 'zh', isF
   const [showSceneManager, setShowSceneManager] = useState(false);
   const [showStyleManager, setShowStyleManager] = useState(false);
   const [playingGame, setPlayingGame] = useState<any>(null);
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(() => {
+    return !sessionStorage.getItem('gala_splash_shown');
+  });
   const [toast, setToast] = useState<string | null>(null);
+
+  const handleSplashComplete = () => {
+    sessionStorage.setItem('gala_splash_shown', 'true');
+    setShowSplash(false);
+  };
 
   const worldviews = appState.galaWorldviews || [];
 
@@ -101,15 +108,17 @@ const GalaGameApp: React.FC<GalaGameAppProps> = ({ onClose, language = 'zh', isF
       exit={{ opacity: 0, y: 20 }}
       className="absolute inset-0 z-[100] bg-gradient-to-b from-[#fdfbfb] to-[#f5f1f0] flex flex-col font-sans text-gray-900 overflow-hidden"
     >
-      {showSplash && <Splash onComplete={() => setShowSplash(false)} />}
+      {showSplash && <Splash onComplete={handleSplashComplete} />}
 
-      {/* Universal Exit Button */}
-      <button 
-        onClick={onClose}
-        className="absolute top-4 right-4 z-[200] p-1.5 bg-white/50 backdrop-blur-md rounded-md shadow-sm border border-[#fcefee] text-[#c5a3a5] transition-all focus:outline-none flex items-center justify-center hover:bg-white active:scale-95"
-      >
-        <X className="w-5 h-5" strokeWidth={1.5} />
-      </button>
+      {/* Universal Exit Button - Only on Home */}
+      {activeTab === 'home' && (
+        <button 
+          onClick={onClose}
+          className="absolute top-4 right-4 z-[200] p-1.5 bg-white/50 backdrop-blur-md rounded-md shadow-sm border border-[#fcefee] text-[#c5a3a5] transition-all focus:outline-none flex items-center justify-center hover:bg-white active:scale-95"
+        >
+          <X className="w-5 h-5" strokeWidth={1.5} />
+        </button>
+      )}
 
       {/* Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden relative z-10 pt-4">

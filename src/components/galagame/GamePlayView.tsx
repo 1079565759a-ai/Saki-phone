@@ -98,9 +98,9 @@ ${context}
 
   const fetchAiResponse = async (prompt: string, isInit: boolean) => {
     try {
-      const apiKey = localStorage.getItem('custom_api_key') || process.env.GEMINI_API_KEY || '';
-      const baseUrl = localStorage.getItem('custom_api_url');
-      const model = localStorage.getItem('custom_api_model') || 'gemini-3-flash-preview';
+      const apiKey = appState.apiKey || localStorage.getItem('custom_api_key') || process.env.GEMINI_API_KEY || '';
+      const baseUrl = appState.apiBaseUrl || localStorage.getItem('custom_api_url');
+      const model = appState.selectedModel || localStorage.getItem('custom_api_model') || 'gemini-3-flash-preview';
 
       const ai = new GoogleGenAI({ 
         apiKey: apiKey,

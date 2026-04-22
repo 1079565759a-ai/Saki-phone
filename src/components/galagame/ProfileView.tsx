@@ -145,6 +145,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onOpenWorldview, onOpenSettin
           { icon: Users, label: '我的角色', action: onOpenCharacters, desc: '管理创作角色库' },
           { icon: Map, label: '我的场景', action: onOpenScenes, desc: '故事发生地点集合' },
           { icon: BookOpen, label: '文风设置', action: onOpenStyles, desc: 'AI创写参考文风' },
+          { icon: Heart, label: '我的收藏', action: () => alert('收藏功能开发中'), desc: '收藏的作品与剧本' },
+          { icon: Inbox, label: '消息通知', action: () => alert('消息中心开发中'), desc: '社区互动内容' },
           { icon: Settings, label: '通用设置', action: onOpenSettings },
         ].map((item, idx) => (
           <div 

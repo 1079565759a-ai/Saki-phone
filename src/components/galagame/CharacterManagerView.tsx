@@ -57,6 +57,26 @@ export const CharacterManagerView: React.FC<CharacterManagerProps> = ({ onClose,
     }
   };
 
+  const handleAddCustomEmotion = () => {
+    const emotionName = prompt('请输入新情绪名称（如：害羞、震惊、吃醋）');
+    if (emotionName && emotionName.trim()) {
+      setEditingChar({
+        ...editingChar,
+        emotions: {
+          ...editingChar.emotions,
+          [emotionName.trim()]: ''
+        }
+      });
+    }
+  };
+
+  const handleRemoveCustomEmotion = (emoKey: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newEmotions = { ...editingChar.emotions };
+    delete newEmotions[emoKey];
+    setEditingChar({ ...editingChar, emotions: newEmotions });
+  };
+
   return (
     <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed inset-0 z-[110] bg-white flex flex-col">
       <div className="px-8 pt-16 pb-8 flex items-center justify-between border-b border-gray-100 sticky top-0 bg-white/90 backdrop-blur-md z-10">
@@ -122,21 +142,33 @@ export const CharacterManagerView: React.FC<CharacterManagerProps> = ({ onClose,
             </div>
 
             <div className="space-y-4">
-              <label className="text-[10px] text-gray-500 font-bold uppercase tracking-widest block">Emotions / 情绪立绘</label>
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Emotions / 情绪立绘</label>
+                <button onClick={handleAddCustomEmotion} className="text-[8px] font-bold uppercase tracking-widest text-gray-900 flex items-center gap-1">
+                  <Plus className="w-3 h-3" /> 添加其他情绪
+                </button>
+              </div>
               <div className="grid grid-cols-4 gap-4">
-                {['happy', 'angry', 'sad', 'joy'].map((emo) => (
-                  <div key={emo} className="space-y-2 flex flex-col items-center">
-                    <div onClick={() => handleUploadClick(`emotions.${emo}`)} className="w-full aspect-[3/4] bg-gray-50 border border-gray-200 rounded-lg overflow-hidden relative cursor-pointer group">
-                      {editingChar.emotions?.[emo] ? <img src={editingChar.emotions[emo]} className="w-full h-full object-cover" /> : <div className="absolute inset-0 flex items-center justify-center"><Plus className="w-4 h-4 text-gray-300"/></div>}
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Camera className="w-4 h-4 text-white"/></div>
+                {Object.keys(editingChar.emotions || {}).map((emo) => {
+                  const defaultLabel = emo === 'happy' ? '喜' : emo === 'angry' ? '怒' : emo === 'sad' ? '哀' : emo === 'joy' ? '乐' : emo;
+                  const isCustom = !['happy', 'angry', 'sad', 'joy'].includes(emo);
+                  return (
+                    <div key={emo} className="space-y-2 flex flex-col items-center relative">
+                      <div onClick={() => handleUploadClick(`emotions.${emo}`)} className="w-full aspect-[3/4] bg-gray-50 border border-gray-200 rounded-lg overflow-hidden relative cursor-pointer group">
+                        {editingChar.emotions?.[emo] ? <img src={editingChar.emotions[emo]} className="w-full h-full object-cover" /> : <div className="absolute inset-0 flex items-center justify-center"><Plus className="w-4 h-4 text-gray-300"/></div>}
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Camera className="w-4 h-4 text-white"/></div>
+                      </div>
+                      <span className="text-[10px] font-bold uppercase text-gray-500 flex items-center gap-1">
+                        {defaultLabel}
+                        {isCustom && (
+                          <button onClick={(e) => handleRemoveCustomEmotion(emo, e)} className="text-gray-300 hover:text-red-500 ml-1">
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
+                      </span>
                     </div>
-                    <span className="text-[10px] font-bold uppercase text-gray-500">{
-                      emo === 'happy' ? '喜' : 
-                      emo === 'angry' ? '怒' : 
-                      emo === 'sad' ? '哀' : '乐'
-                    }</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

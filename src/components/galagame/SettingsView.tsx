@@ -21,6 +21,7 @@ interface SettingsViewProps {
 
 const SettingsView: React.FC<SettingsViewProps> = ({ onClose, appState, updateState }) => {
   const [activeSection, setActiveSection] = useState<'main' | 'interface' | 'api'>('main');
+  const [showApiKey, setShowApiKey] = useState(false);
 
   const [customApiKey, setCustomApiKey] = useState(localStorage.getItem('custom_api_key') || '');
   const [customApiUrl, setCustomApiUrl] = useState(localStorage.getItem('custom_api_url') || '');
@@ -159,21 +160,51 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onClose, appState, updateSt
               exit={{ opacity: 0, x: 20 }}
               className="p-8 space-y-8"
             >
-              <div className="space-y-6">
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-900 block mb-2">Gemini API Key</label>
-                  <input type="password" value={customApiKey} onChange={e => setCustomApiKey(e.target.value)} className="w-full bg-gray-50 border border-gray-100 p-3 text-xs" placeholder="AI Studio Key..." />
+              <section>
+                <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-4">大模型 API 设置</h3>
+                <div className="space-y-4">
+                  <div className="bg-white border border-gray-100 p-5">
+                    <label className="block text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-widest">API Base URL</label>
+                    <input 
+                      type="text" 
+                      value={appState.apiBaseUrl}
+                      onChange={e => updateState('apiBaseUrl', e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-100 p-3 text-xs outline-none focus:border-gray-900/30 transition-colors font-mono"
+                      placeholder="https://api.example.com/v1"
+                    />
+                  </div>
+
+                  <div className="bg-white border border-gray-100 p-5">
+                    <label className="block text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-widest">API Key</label>
+                    <div className="relative">
+                      <input 
+                        type={showApiKey ? "text" : "password"} 
+                        value={appState.apiKey}
+                        onChange={e => updateState('apiKey', e.target.value)}
+                        className="w-full bg-gray-50 border border-gray-100 p-3 pr-10 text-xs outline-none focus:border-gray-900/30 transition-colors font-mono"
+                        placeholder="sk-..."
+                      />
+                      <button 
+                        onClick={() => setShowApiKey(!showApiKey)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-900"
+                      >
+                        {showApiKey ? <Monitor className="w-4 h-4" /> : <Shield className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="bg-white border border-gray-100 p-5">
+                    <label className="block text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-widest">Model</label>
+                    <input 
+                      type="text" 
+                      value={appState.selectedModel || 'gemini-3-flash-preview'}
+                      onChange={e => updateState('selectedModel', e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-100 p-3 text-xs outline-none focus:border-gray-900/30 transition-colors font-mono"
+                      placeholder="gemini-3-flash-preview"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-900 block mb-2">Base URL (可为空)</label>
-                  <input type="text" value={customApiUrl} onChange={e => setCustomApiUrl(e.target.value)} className="w-full bg-gray-50 border border-gray-100 p-3 text-xs" placeholder="https://..." />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-900 block mb-2">Model</label>
-                  <input type="text" value={customApiModel} onChange={e => setCustomApiModel(e.target.value)} className="w-full bg-gray-50 border border-gray-100 p-3 text-xs" placeholder="gemini-3-flash-preview" />
-                </div>
-                <button onClick={handleSaveApiSettings} className="w-full py-4 bg-gray-900 text-white font-bold tracking-[0.2em] text-[10px]">保存 API 设置</button>
-              </div>
+              </section>
             </motion.div>
           ) : null}
         </AnimatePresence>
