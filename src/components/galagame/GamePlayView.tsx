@@ -165,7 +165,8 @@ ${proDesc}
 
     const contextStr = contextLog.slice(-15).join('\n');
     
-    const prompt = `玩家做出了选择：${userChoiceText}
+    const prompt = `你是一个女性向视觉小说(乙女向Galgame)游戏引擎。
+玩家做出了选择：${userChoiceText}
     
 之前的剧情摘要：
 ${contextStr}
@@ -174,7 +175,23 @@ ${contextStr}
 - 选项可能影响好感度并在剧情中体现男主反应，或者导向支线。
 - 如果达成结局，可以在 JSON 添加 "ending": "True" 或 "Bad"，此时可不要 options。
 - 如果触发特定成就，可以在JSON添加 "achievementsUnlocked": ["成就1名称"]。
-请严格保持同上的纯JSON格式，仅输出JSON字符串。`;
+
+必须严格遵守以下纯JSON格式返回，不要有任何多余的markdown或说明文字：
+{
+  "lines": [
+    {
+      "type": "narrator", // 或 "character" 或 "protagonist"
+      "name": "角色名或空",
+      "text": "本幕的文字内容",
+      "sceneKeyword": "场景关键词(无切换则为空)",
+      "charKeyword": "角色名(无则为空)",
+      "charEmotion": "情绪关键词(normal/happy/sad/angry/blush等或空)"
+    }
+  ],
+  "options": [
+    { "text": "选项卡文字", "hint": "影响好感度/触发支线提示" }
+  ]
+}`;
 
     await fetchAiResponse(prompt, userChoiceText);
   };
@@ -212,6 +229,14 @@ ${contextStr}
       let newLogs = [...contextLog, '玩家行动: ' + userChoice];
       
       let currentSceneFallback = globalScene;
+      let lastCharImg = currentCharacterImage; // Fallback to last character image across generation
+
+      if (pLines.length === 0) {
+         pLines.push({ type: 'narrator', name: '', text: '系统: 剧本生成异常（内容为空），请重试。', sceneImage: currentSceneFallback, portraitImage: lastCharImg });
+         if (!parsed.options || parsed.options.length === 0) {
+             setOptions([{ text: '重试前一选项', hint: '重新生成当前分支' }]);
+         }
+      }
 
       (parsed.lines || []).forEach((l: any) => {
         let speakerTag = l.type || 'narrator';
@@ -223,14 +248,24 @@ ${contextStr}
         }
         currentSceneFallback = sImg;
 
-        let cImg = '';
+        let cImg = lastCharImg;
         if (l.charKeyword && speakerTag === 'character') {
           const foundC = appState.galaCharacters?.find((c: any) => c.name.includes(l.charKeyword) || l.charKeyword.includes(c.name));
           if (foundC) {
              const lowerEmo = (l.charEmotion || '').toLowerCase();
              cImg = foundC.emotions?.[lowerEmo] || foundC.photo || '';
+          } else {
+             cImg = '';
           }
+        } else if (l.charKeyword && speakerTag !== 'character') {
+           const foundC = appState.galaCharacters?.find((c: any) => c.name.includes(l.charKeyword) || l.charKeyword.includes(c.name));
+           if (foundC) {
+              const lowerEmo = (l.charEmotion || '').toLowerCase();
+              cImg = foundC.emotions?.[lowerEmo] || foundC.photo || '';
+           }
         }
+
+        lastCharImg = cImg;
 
         let lineName = l.name || '';
         if (speakerTag === 'protagonist') {
@@ -254,7 +289,8 @@ ${contextStr}
          pLines.push({
            type: 'narrator', name: '',
            text: `【达成结局：${parsed.ending === 'True' ? 'True End - 真实结局' : 'Bad End - 遗憾终结'}】`,
-           sceneImage: currentSceneFallback
+           sceneImage: currentSceneFallback,
+           portraitImage: lastCharImg
          });
          setOptions([]);
          if (parsed.ending === 'True') {
@@ -328,10 +364,13 @@ ${contextStr}
                 <h1 className="text-4xl font-bold text-white tracking-widest drop-shadow-xl">{game.title}</h1>
                 <p className="text-white/70 mt-4 text-sm leading-relaxed tracking-wider line-clamp-3 drop-shadow-md">{game.intro}</p>
                 <div className="mt-16 flex flex-col gap-6">
-                  {['开始', '章节'].map(btn => (
+                  {['开始游戏', '继续', '章节', '番外篇', '设置'].map(btn => (
                     <button key={btn} onClick={() => {
-                        if (btn === '开始') handleStartGame(0);
+                        if (btn === '开始游戏') handleStartGame(0);
+                        else if (btn === '继续') handleStartGame(Math.max(0, unlockedChapters.length - 1));
                         else if (btn === '章节') setScreen('chapters');
+                        else if (btn === '番外篇') alert('番外内容还未解锁。');
+                        else if (btn === '设置') alert('请前往系统主界面进行全局设置。');
                       }}
                       className="text-left text-white/80 hover:text-white text-lg tracking-[0.5em] font-bold group flex items-center"
                     >
@@ -398,7 +437,7 @@ ${contextStr}
                     className="absolute inset-0 w-full h-full object-cover" 
                   />
                 </AnimatePresence>
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-80" />
+                {/* Removed the dark background gradient here */}
               </div>
 
               {/* Achievements overlay */}
@@ -418,30 +457,37 @@ ${contextStr}
               </AnimatePresence>
 
               <AnimatePresence mode="popLayout">
-                {currentLine?.type === 'character' && currentLine?.portraitImage && (
+                {currentLine?.portraitImage && (
                    <motion.img 
                      key={currentLine.portraitImage}
                      initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                      src={currentLine.portraitImage} 
-                     className="absolute bottom-1/4 left-1/2 -translate-x-1/2 h-[75%] max-w-[80vw] object-contain object-bottom pointer-events-none drop-shadow-[0_0_20px_rgba(255,255,255,0.15)] z-10"
+                     className="absolute bottom-[20vh] sm:bottom-[25vh] left-1/2 -translate-x-1/2 h-[75%] max-w-[80vw] object-contain object-bottom pointer-events-none drop-shadow-[0_0_20px_rgba(255,255,255,0.15)] z-10"
                    />
                 )}
               </AnimatePresence>
 
               {/* Options Overlay */}
-              {isLineEnd && options.length > 0 && !isGenerating && (
-                <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-                  <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-full max-w-xl flex flex-col gap-4">
-                     {options.map((opt, i) => (
+              {isLineEnd && !isGenerating && (
+                <div className="absolute inset-0 z-50 flex flex-col justify-end items-center pb-[34vh] px-4">
+                  <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-full max-w-xl flex flex-col gap-4 pointer-events-auto">
+                     {options.length > 0 ? options.map((opt, i) => (
                         <button 
                           key={i}
                           onClick={(e) => { e.stopPropagation(); handleOptionSelect(opt); }}
-                          className="w-full p-4 bg-black/70 hover:bg-[#d49a9f]/20 border-2 border-white/20 hover:border-[#d49a9f] text-white text-center rounded-xl tracking-widest transition-all relative group shadow-xl"
+                          className="w-full p-4 bg-black/70 hover:bg-[#d49a9f]/30 border-2 border-white/20 hover:border-[#d49a9f] text-white text-center rounded-xl tracking-widest transition-all relative group shadow-xl backdrop-blur-md"
                         >
                            <span className="relative z-10 font-bold sm:text-lg">{opt.text}</span>
                            {opt.hint && <div className="text-xs text-[#d49a9f] mt-1.5 font-normal opacity-0 group-hover:opacity-100 transition-opacity">{opt.hint}</div>}
                         </button>
-                     ))}
+                     )) : (
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); setScreen('chapters'); }}
+                          className="w-full p-4 bg-black/70 hover:bg-[#d49a9f]/20 border-2 border-[#d49a9f] text-white text-center rounded-xl tracking-widest transition-all shadow-xl backdrop-blur-md"
+                        >
+                           <span className="font-bold sm:text-lg">本节结束 (返回章节列表)</span>
+                        </button>
+                     )}
                   </motion.div>
                 </div>
               )}
@@ -453,13 +499,13 @@ ${contextStr}
               </div>
 
               {/* Classic Visual Novel Dialogue Box */}
-              <div className="absolute bottom-0 left-0 right-0 px-4 pb-6 sm:px-12 sm:pb-12 pt-16 z-30 flex flex-col items-center select-none bg-gradient-to-t from-black/90 to-transparent pointer-events-none">
+              <div className="absolute bottom-0 left-0 right-0 px-4 pb-6 sm:px-12 sm:pb-8 pt-12 z-30 flex flex-col justify-end items-center select-none bg-gradient-to-t from-black/80 to-transparent pointer-events-none h-[33vh]">
                  {isGenerating ? (
-                    <div className="w-full max-w-5xl min-h-[140px] flex items-center justify-center">
+                    <div className="w-full max-w-5xl h-full flex items-center justify-center bg-black/40 backdrop-blur-md rounded-xl border border-white/10">
                        <Loader2 className="w-8 h-8 text-white/50 animate-spin" />
                     </div>
                  ) : currentLine ? (
-                    <div className="w-full max-w-5xl min-h-[140px] relative bg-black/60 backdrop-blur-md border-[1.5px] border-white/20 rounded-xl p-6 sm:p-8 shadow-2xl pointer-events-auto">
+                    <div className="w-full max-w-5xl h-full relative bg-black/60 backdrop-blur-md border-[1.5px] border-white/20 rounded-xl p-6 sm:p-8 shadow-2xl pointer-events-auto">
                        {currentLine.type !== 'narrator' && currentLine.name && (
                           <div className="absolute -top-5 left-6 sm:left-10 bg-gradient-to-r from-[#e8b5be] to-[#d49a9f] px-6 py-1.5 rounded-lg text-white font-bold tracking-widest shadow-xl border border-white/20">
                              {currentLine.name}

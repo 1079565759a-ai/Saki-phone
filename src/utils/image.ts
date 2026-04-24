@@ -36,7 +36,9 @@ export const compressImage = (file: File, maxWidth = 800, maxHeight = 800, quali
         const ctx = canvas.getContext('2d');
         if (ctx) {
           ctx.drawImage(img, 0, 0, width, height);
-          const outputType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+          const isTransparent = file.type === 'image/png' || file.type === 'image/webp';
+          const outputType = isTransparent ? 'image/webp' : 'image/jpeg';
+          
           resolve(canvas.toDataURL(outputType, quality));
         } else {
           resolve(event.target?.result as string);
