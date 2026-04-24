@@ -14,15 +14,16 @@ interface GamePlayViewProps {
 type GameScreen = 'loading' | 'home' | 'name-input' | 'playing' | 'chapters';
 
 interface VNLine {
-  speakerTag: string;
+  type: string; // 'narrator' | 'character' | 'protagonist'
   name: string;
   text: string;
-  portrait?: string;
-  scene?: string;
+  portraitImage?: string;
+  sceneImage?: string;
 }
 
 interface VNOption {
   text: string;
+  hint?: string;
   effect?: string;
 }
 
@@ -40,16 +41,17 @@ export const GamePlayView: React.FC<GamePlayViewProps> = ({ game, onClose, appSt
   const [currentIndex, setCurrentIndex] = useState(0);
   const [options, setOptions] = useState<VNOption[]>([]);
   
-  const [currentSceneImage, setCurrentSceneImage] = useState<string>(game.cover || '');
-  const [currentCharacterImage, setCurrentCharacterImage] = useState<string>('');
-  
   const [isGenerating, setIsGenerating] = useState(false);
   const [contextLog, setContextLog] = useState<string[]>([]);
+  const [achievements, setAchievements] = useState<string[]>([]);
+  
+  // Track continuous state across lines
+  const [globalScene, setGlobalScene] = useState<string>(game.cover || '');
   
   const chapters = game.chapters || [];
 
   const getPlayerName = () => {
-    if (protagonistSettings.nameType === 'fixed') return protagonistSettings.fixedName || '主角';
+    if (protagonistSettings.nameType === 'fixed') return protagonistSettings.fixedName || '主人公';
     if (protagonistSettings.nameType === 'custom') return customPlayerName || '你';
     return ''; 
   };
@@ -111,36 +113,40 @@ export const GamePlayView: React.FC<GamePlayViewProps> = ({ game, onClose, appSt
     const chapter = chapters[index] || { title: '启程', desc: '游戏的开端' };
     
     let worldViewDesc = game.worldview ? '【世界观】：' + game.worldview.background : '';
-    let currChapterDesc = '【当前章节】：' + chapter.title + '。情节要求：' + chapter.desc;
-    let proDesc = '【主人公设定】：人设：' + (protagonistSettings.persona || '普通人') + '。名称：' + (getPlayerName() || '无(使用第二人称你)');
+    let currChapterDesc = '【当前章节】：' + chapter.title + '。小节梗概：' + chapter.desc;
+    let proDesc = '【主人公设定】：' + (protagonistSettings.persona || '默认女主') + '。名称：' + (getPlayerName() || '玩家');
     
-    const initPrompt = `你是一个视觉小说(Galgame)游戏引擎。
+    const initPrompt = `你是一个女性向视觉小说(乙女向Galgame)游戏引擎。默认攻略角色主要为男性。
 游戏名称：${game.title}
 ${worldViewDesc}
 ${currChapterDesc}
 ${proDesc}
 
-请生成本章开头的剧情（约8-15句对话/旁白），然后给出2-3个玩家选项。
-剧情要符合如下结构：
-- 角色的对话必须加上双引号。
-- 旁白用第三人称描述角色，用第二人称"你"描述主人公。
-- 主人公的动作或心理活动作为旁白。
+请生成本章开头的剧情（约10-15幕详细对话或描写），然后给出2-3个玩家选项卡供用户选择。
+要求结构：
+1. 一句话或一个动作作为单独的一幕（Line）。
+2. 角色说的话用 type: "character"。对话加上引号。
+3. 主人公说的话用 type: "protagonist"。对话加上引号。
+4. 旁白(描述场景、心理等，对主人公用第二人称你)用 type: "narrator"。
+5. 需要切换场景时填写 sceneKeyword。
+6. 角色说话或出现时填写 charKeyword 和 charEmotion。
 
-必须返回纯JSON，格式如下：
+必须严格返回JSON，格式如下（不要包裹在markdown内，只返回JSON字符串）：
 {
   "lines": [
-    { "type": "narrator", "text": "清晨的阳光洒在街道上..." },
-    { "type": "character", "name": "爱丽丝", "emotion": "happy", "text": "\\"早上好呀！\\"", "tag": "Alice" },
-    { "type": "protagonist", "text": "\\"早啊。\\"" }
+    {
+      "type": "narrator", 
+      "name": "",
+      "text": "本幕的文字内容",
+      "sceneKeyword": "场景关键词(无切换则为空)",
+      "charKeyword": "角色名(无则为空)",
+      "charEmotion": "情绪关键词(normal/happy/sad/angry/blush等或空)"
+    }
   ],
   "options": [
-    { "text": "询问去哪里", "effect": "信息" },
-    { "text": "冷漠走开", "effect": "爱丽丝好感-1" }
-  ],
-  "scene": "可选，场景名关键词",
-  "ending": "可选，如果剧情完结填 True 或 Bad"
-}
-限制纯JSON返回，不要在前后加反引号或额外文本！`;
+    { "text": "选项卡文字", "hint": "影响好感度/触发支线提示" }
+  ]
+}`;
 
     await fetchAiResponse(initPrompt, '开始');
   };
@@ -155,15 +161,18 @@ ${proDesc}
     setOptions([]);
     setIsGenerating(true);
 
-    const contextStr = contextLog.slice(-10).join('\n');
+    const contextStr = contextLog.slice(-15).join('\n');
     
     const prompt = `玩家做出了选择：${userChoiceText}
     
 之前的剧情摘要：
 ${contextStr}
 
-请根据选择继续生成后续剧情（8-15句对话/旁白），并再次提供选项。如果达成真结局或坏结局，可不提供选项，并设置 ending 字段。
-必须返回严格纯JSON格式同上。`;
+请根据选择继续生成后续剧情（10-15幕），并再次提供新的选项。
+- 选项可能影响好感度并在剧情中体现男主反应，或者导向支线。
+- 如果达成结局，可以在 JSON 添加 "ending": "True" 或 "Bad"，此时可不要 options。
+- 如果触发特定成就，可以在JSON添加 "achievementsUnlocked": ["成就1名称"]。
+请严格保持同上的纯JSON格式，仅输出JSON字符串。`;
 
     await fetchAiResponse(prompt, userChoiceText);
   };
@@ -189,42 +198,61 @@ ${contextStr}
          text = response.text || '';
       }
       
-      const cleanText = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+      let cleanText = text.trim();
+      const stIdx = cleanText.indexOf('{');
+      const edIdx = cleanText.lastIndexOf('}');
+      if (stIdx !== -1 && edIdx !== -1) {
+         cleanText = cleanText.substring(stIdx, edIdx + 1);
+      }
       const parsed = JSON.parse(cleanText);
       
       let pLines: VNLine[] = [];
       let newLogs = [...contextLog, '玩家行动: ' + userChoice];
       
-      if (parsed.scene) {
-        const foundScene = appState.galaScenes?.find((s: any) => s.name.includes(parsed.scene) || parsed.scene.includes(s.name));
-        if (foundScene?.images?.[0]) {
-          setCurrentSceneImage(foundScene.images[0]);
+      let currentSceneFallback = globalScene;
+
+      (parsed.lines || []).forEach((l: any) => {
+        let speakerTag = l.type || 'narrator';
+        
+        let sImg = currentSceneFallback;
+        if (l.sceneKeyword) {
+          const foundS = appState.galaScenes?.find((s: any) => s.name.includes(l.sceneKeyword) || l.sceneKeyword.includes(s.name));
+          if (foundS?.images?.[0]) sImg = foundS.images[0];
         }
-      }
+        currentSceneFallback = sImg;
 
-      parsed.lines.forEach((l: any) => {
-        let lineName = '';
-        let speakerTag = l.type;
-        let charImg = '';
-
-        if (speakerTag === 'character') {
-          lineName = l.name || l.tag;
-          const foundChar = appState.galaCharacters?.find((c: any) => c.name.includes(lineName) || lineName.includes(c.name));
-          if (foundChar) {
-            charImg = foundChar.emotions?.[l.emotion?.toLowerCase()] || foundChar.photo || '';
+        let cImg = '';
+        if (l.charKeyword && speakerTag === 'character') {
+          const foundC = appState.galaCharacters?.find((c: any) => c.name.includes(l.charKeyword) || l.charKeyword.includes(c.name));
+          if (foundC) {
+             const lowerEmo = (l.charEmotion || '').toLowerCase();
+             cImg = foundC.emotions?.[lowerEmo] || foundC.photo || '';
           }
-        } else if (speakerTag === 'protagonist') {
-          lineName = getPlayerName();
         }
 
-        pLines.push({ speakerTag, name: lineName, text: l.text, portrait: charImg });
+        let lineName = l.name || '';
+        if (speakerTag === 'protagonist') {
+           lineName = getPlayerName();
+        } else if (speakerTag === 'narrator') {
+           lineName = '';
+        }
+
+        pLines.push({
+          type: speakerTag,
+          name: lineName,
+          text: l.text,
+          portraitImage: cImg,
+          sceneImage: sImg
+        });
+        
         newLogs.push(`[${speakerTag}] ${lineName}: ${l.text}`);
       });
 
       if (parsed.ending) {
          pLines.push({
-           speakerTag: 'narrator', name: '',
-           text: `【达成结局：${parsed.ending === 'True' ? 'True End - 真实结局' : 'Bad End - 遗憾终结'}】`
+           type: 'narrator', name: '',
+           text: `【达成结局：${parsed.ending === 'True' ? 'True End - 真实结局' : 'Bad End - 遗憾终结'}】`,
+           sceneImage: currentSceneFallback
          });
          setOptions([]);
          if (parsed.ending === 'True') {
@@ -236,19 +264,19 @@ ${contextStr}
         setOptions(parsed.options || []);
       }
 
-      setContextLog(newLogs);
-      if (pLines[0]?.portrait) {
-         setCurrentCharacterImage(pLines[0].portrait);
-      } else if (pLines.length && !pLines[0].portrait && pLines[0].speakerTag === 'character') {
-          setCurrentCharacterImage(''); 
+      if (parsed.achievementsUnlocked && Array.isArray(parsed.achievementsUnlocked)) {
+         setAchievements(parsed.achievementsUnlocked);
+         setTimeout(() => setAchievements([]), 4000);
       }
 
+      setGlobalScene(currentSceneFallback);
+      setContextLog(newLogs);
       setLines(pLines);
       setCurrentIndex(0);
     } catch (e) {
       console.error('Game Engine Parse Error:', e);
-      setLines([{ speakerTag: 'narrator', name: '', text: '系统: 剧本生成失败，请检查API配置或稍后再试。' }]);
-      setOptions([{ text: '重试', effect: 'retry' }]);
+      setLines([{ type: 'narrator', name: '', text: '系统: 剧本生成失败，请检查API配置或稍后再试。', sceneImage: globalScene }]);
+      setOptions([{ text: '重试', hint: '' }]);
     } finally {
       setIsGenerating(false);
     }
@@ -257,18 +285,13 @@ ${contextStr}
   const handleScreenClick = () => {
     if (isGenerating || lines.length === 0) return;
     if (currentIndex < lines.length - 1) {
-      const nextIdx = currentIndex + 1;
-      setCurrentIndex(nextIdx);
-      if (lines[nextIdx].portrait) {
-        setCurrentCharacterImage(lines[nextIdx].portrait as string);
-      } else if (lines[nextIdx].speakerTag !== 'character') {
-         setCurrentCharacterImage(''); 
-      }
+      setCurrentIndex(curr => curr + 1);
     }
   };
 
   const currentLine = lines[currentIndex];
   const isLineEnd = currentIndex === lines.length - 1;
+  const currentBg = currentLine?.sceneImage || globalScene;
 
   return (
     <>
@@ -360,68 +383,100 @@ ${contextStr}
           )}
 
           {screen === 'playing' && (
-            <motion.div key="playing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 z-40 bg-black flex flex-col" onClick={handleScreenClick}>
+            <motion.div key="playing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 z-40 bg-black flex flex-col overflow-hidden" onClick={handleScreenClick}>
               <div className="absolute inset-0 z-0">
-                <img src={currentSceneImage || game.cover} className="w-full h-full object-cover opacity-60" />
+                <AnimatePresence mode="popLayout">
+                  <motion.img 
+                    key={currentBg}
+                    initial={{ opacity: 0.5, scale: 1.05 }}
+                    animate={{ opacity: 0.6, scale: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 1 }}
+                    src={currentBg} 
+                    className="absolute inset-0 w-full h-full object-cover" 
+                  />
+                </AnimatePresence>
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-80" />
               </div>
 
+              {/* Achievements overlay */}
+              <AnimatePresence>
+                {achievements.length > 0 && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }}
+                    className="absolute top-16 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 items-center pointer-events-none"
+                  >
+                    {achievements.map((ach, idx) => (
+                       <div key={idx} className="px-6 py-2 bg-[#d49a9f]/90 text-white rounded-full shadow-lg border border-white/20 text-sm tracking-widest font-bold">
+                          ★ 达成成就: {ach}
+                       </div>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               <AnimatePresence mode="popLayout">
-                {currentCharacterImage && (
+                {currentLine?.type === 'character' && currentLine?.portraitImage && (
                    <motion.img 
-                     key={currentCharacterImage}
+                     key={currentLine.portraitImage}
                      initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                     src={currentCharacterImage} 
-                     className="absolute bottom-32 left-1/2 -translate-x-1/2 h-[75%] max-w-[80vw] object-contain object-bottom pointer-events-none drop-shadow-[0_0_20px_rgba(255,255,255,0.15)] z-10"
+                     src={currentLine.portraitImage} 
+                     className="absolute bottom-1/4 left-1/2 -translate-x-1/2 h-[75%] max-w-[80vw] object-contain object-bottom pointer-events-none drop-shadow-[0_0_20px_rgba(255,255,255,0.15)] z-10"
                    />
                 )}
               </AnimatePresence>
 
+              {/* Options Overlay */}
+              {isLineEnd && options.length > 0 && !isGenerating && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+                  <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-full max-w-xl flex flex-col gap-4">
+                     {options.map((opt, i) => (
+                        <button 
+                          key={i}
+                          onClick={(e) => { e.stopPropagation(); handleOptionSelect(opt); }}
+                          className="w-full p-4 bg-black/70 hover:bg-[#d49a9f]/20 border-2 border-white/20 hover:border-[#d49a9f] text-white text-center rounded-xl tracking-widest transition-all relative group shadow-xl"
+                        >
+                           <span className="relative z-10 font-bold sm:text-lg">{opt.text}</span>
+                           {opt.hint && <div className="text-xs text-[#d49a9f] mt-1.5 font-normal opacity-0 group-hover:opacity-100 transition-opacity">{opt.hint}</div>}
+                        </button>
+                     ))}
+                  </motion.div>
+                </div>
+              )}
+
               <div className="relative z-20 p-6 flex justify-between items-center bg-gradient-to-b from-black/80 to-transparent">
-                <button onClick={() => setScreen('home')} className="text-white/70 hover:text-white bg-black/40 backdrop-blur-md p-2 rounded-full z-50 relative">
+                <button onClick={() => setScreen('home')} className="text-white/70 hover:text-white bg-black/40 backdrop-blur-md p-2 rounded-full z-50 relative pointer-events-auto">
                   <ArrowLeft className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="absolute bottom-0 left-0 right-0 p-8 pt-24 z-30 bg-gradient-to-t from-black/95 via-black/80 to-transparent flex flex-col items-center">
+              {/* Classic Visual Novel Dialogue Box */}
+              <div className="absolute bottom-0 left-0 right-0 px-4 pb-6 sm:px-12 sm:pb-12 pt-16 z-30 flex flex-col items-center select-none bg-gradient-to-t from-black/90 to-transparent pointer-events-none">
                  {isGenerating ? (
-                    <div className="min-h-[120px] flex items-center justify-center w-full max-w-4xl">
-                       <Loader2 className="w-6 h-6 text-white/50 animate-spin" />
+                    <div className="w-full max-w-5xl min-h-[140px] flex items-center justify-center">
+                       <Loader2 className="w-8 h-8 text-white/50 animate-spin" />
                     </div>
                  ) : currentLine ? (
-                    <div className="w-full max-w-4xl min-h-[120px] relative bg-black/40 backdrop-blur-sm border border-white/10 rounded-lg p-6">
-                       {currentLine.speakerTag !== 'narrator' && currentLine.name && (
-                          <div className="absolute -top-4 left-6 bg-[#d49a9f] px-4 py-1 rounded text-white text-sm font-bold tracking-widest shadow-lg">
+                    <div className="w-full max-w-5xl min-h-[140px] relative bg-black/60 backdrop-blur-md border-[1.5px] border-white/20 rounded-xl p-6 sm:p-8 shadow-2xl pointer-events-auto">
+                       {currentLine.type !== 'narrator' && currentLine.name && (
+                          <div className="absolute -top-5 left-6 sm:left-10 bg-gradient-to-r from-[#e8b5be] to-[#d49a9f] px-6 py-1.5 rounded-lg text-white font-bold tracking-widest shadow-xl border border-white/20">
                              {currentLine.name}
                           </div>
                        )}
                        <div className={cn(
-                          'text-lg sm:text-lg leading-relaxed tracking-wider mt-2',
-                          currentLine.speakerTag === 'narrator' ? 'text-white/80 italic text-center' : 'text-white'
+                          'text-lg sm:text-xl leading-[1.8] tracking-wider mt-2 transition-all',
+                          currentLine.type === 'narrator' ? 'text-white/80 italic text-center px-8' : 'text-white'
                        )}>
                           {currentLine.text}
                        </div>
                        
                        {!isLineEnd && (
-                          <div className="absolute bottom-4 right-6 animate-pulse text-white/50">▼</div>
+                          <div className="absolute bottom-4 right-6 sm:right-8 animate-bounce text-white/70">
+                             <PlayCircle className="w-6 h-6" />
+                          </div>
                        )}
                     </div>
                  ) : null}
-
-                 {isLineEnd && options.length > 0 && !isGenerating && (
-                    <div className="absolute bottom-[100%] mb-8 w-full max-w-2xl px-8 flex flex-col gap-3 left-1/2 -translate-x-1/2 z-50">
-                       {options.map((opt, i) => (
-                          <motion.button 
-                            key={i}
-                            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
-                            onClick={(e) => { e.stopPropagation(); handleOptionSelect(opt); }}
-                            className="w-full p-4 bg-black/80 hover:bg-white/10 border border-[#d49a9f]/50 hover:border-[#d49a9f] backdrop-blur-md text-white text-center rounded-lg tracking-widest transition-all"
-                          >
-                             {opt.text}
-                          </motion.button>
-                       ))}
-                    </div>
-                 )}
               </div>
             </motion.div>
           )}
@@ -439,3 +494,4 @@ ${contextStr}
     </>
   );
 };
+
