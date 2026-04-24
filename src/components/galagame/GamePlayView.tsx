@@ -52,6 +52,39 @@ export const GamePlayView: React.FC<GamePlayViewProps> = ({ game, onClose, appSt
     }
   }, [messages, screen]);
 
+  useEffect(() => {
+    const tryLockOrientation = async () => {
+      try {
+        const elem = document.documentElement;
+        if (elem.requestFullscreen && !document.fullscreenElement) {
+          await elem.requestFullscreen().catch(() => {});
+        }
+        if (window.screen && window.screen.orientation && window.screen.orientation.lock) {
+          await window.screen.orientation.lock('landscape').catch(() => {});
+        }
+      } catch (err) {
+        console.warn("Fullscreen/Orientation lock failed:", err);
+      }
+    };
+    
+    // We can't auto-request fullscreen without a user gesture in some browsers.
+    // However, since this component mounts right after a user click, it might work!
+    tryLockOrientation();
+
+    return () => {
+      try {
+        if (document.fullscreenElement) {
+          document.exitFullscreen().catch(() => {});
+        }
+        if (window.screen && window.screen.orientation && window.screen.orientation.unlock) {
+          window.screen.orientation.unlock();
+        }
+      } catch (err) {
+        console.warn("Fullscreen exit failed:", err);
+      }
+    };
+  }, []);
+
   const startChapter = async (index: number) => {
     setCurrentChapterIndex(index);
     setScreen('playing');
@@ -113,10 +146,26 @@ ${context}
       const baseUrl = appState.apiBaseUrl || localStorage.getItem('custom_api_url');
       const model = appState.selectedModel || localStorage.getItem('custom_api_model') || 'gemini-3-flash-preview';
 
-      const ai = new GoogleGenAI({ apiKey: apiKey, ...(baseUrl ? { baseUrl } : {}) });
-      
-      const response = await ai.models.generateContent({ model: model, contents: prompt });
-      let text = response.text || '';
+      let text = '';
+      if (apiKey && apiKey !== process.env.GEMINI_API_KEY && baseUrl) {
+         const response = await fetch(`${baseUrl.replace(/\/$/, '')}/chat/completions`, {
+            method: 'POST',
+            headers: {
+               'Content-Type': 'application/json',
+               'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+               model: model,
+               messages: [{ role: 'user', content: prompt }]
+            })
+         });
+         const data = await response.json();
+         text = data.choices?.[0]?.message?.content || '';
+      } else {
+         const ai = new GoogleGenAI({ apiKey: apiKey });
+         const response = await ai.models.generateContent({ model: model, contents: prompt });
+         text = response.text || '';
+      }
       
       let sceneMatch = text.match(/\[Scene:\s*(.+?)\]/);
       let charMatch = text.match(/\[Char:\s*(.+?):\s*(.+?)\]/);
@@ -177,10 +226,11 @@ ${context}
   };
 
   return (
-    <div className="fixed inset-0 z-[200] bg-black flex items-center justify-center font-serif">
-      {/* Landscape Game Container */}
-      <div className="relative w-full h-full sm:aspect-video sm:w-[90vw] sm:max-w-[1280px] sm:h-auto sm:max-h-[85vh] bg-gray-900 shadow-2xl overflow-hidden rounded-none sm:rounded-xl portrait:rotate-0 landscape:rotate-0">
-        <AnimatePresence mode="wait">
+    <>
+      <div className="fixed inset-0 z-[200] bg-black flex items-center justify-center font-serif">
+        {/* Landscape Game Container */}
+        <div className="relative w-full h-full sm:aspect-video sm:w-[90vw] sm:max-w-[1280px] sm:h-auto sm:max-h-[85vh] bg-gray-900 shadow-2xl overflow-hidden rounded-none sm:rounded-xl portrait:rotate-0 landscape:rotate-0">
+          <AnimatePresence mode="wait">
           
           {/* Loading Screen */}
           {screen === 'loading' && (
@@ -344,5 +394,20 @@ ${context}
         </AnimatePresence>
       </div>
     </div>
+    
+    {/* Portrait orientation warning overlay */}
+    <div className="fixed inset-0 z-[300] bg-black bg-opacity-90 flex-col items-center justify-center text-white hidden portrait:flex sm:portrait:hidden">
+      <div className="text-center p-8 border border-white/20 rounded-2xl bg-black/50 backdrop-blur-md">
+        <svg className="w-16 h-16 mx-auto mb-6 opacity-80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5h3m-6.75 2.25h10.5a2.25 2.25 0 002.25-2.25v-15a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 4.5v15a2.25 2.25 0 002.25 2.25z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v20M2 12h20" className="hidden" />
+          <path d="M16 8l-4 -4l-4 4" />
+        </svg>
+        <p className="text-xl font-bold tracking-widest mb-4">请旋转手机</p>
+        <p className="text-sm text-white/60 tracking-wider">该游戏主要适配横屏体验</p>
+        <button onClick={onClose} className="mt-8 px-8 py-2 bg-white/10 hover:bg-white/20 rounded-full text-sm transition-colors border border-white/10">退出</button>
+      </div>
+    </div>
+    </>
   );
 };

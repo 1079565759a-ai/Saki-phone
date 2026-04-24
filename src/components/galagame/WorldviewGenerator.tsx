@@ -39,21 +39,37 @@ const WorldviewGenerator: React.FC<WorldviewGeneratorProps> = ({ onClose, onSave
       const baseUrl = appState.apiBaseUrl || localStorage.getItem('custom_api_url');
       const model = appState.selectedModel || localStorage.getItem('custom_api_model') || 'gemini-3-flash-preview';
 
-      const ai = new GoogleGenAI({ apiKey: apiKey, ...(baseUrl ? { baseUrl } : {}) });
-      
-      const response = await ai.models.generateContent({
-        model: model,
-        contents: `基于以下描述生成一个Galagame世界观：${prompt}。返回JSON格式，包含：
+      const promptStr = `基于以下描述生成一个Galagame世界观：${prompt}。返回JSON格式，包含：
         - id: 留空
         - name: 这套世界观的名字 (10字内)
         - background: 世界背景 (100-200字)
         - factions: 势力分布列表 (每个元素是字符串, 直接写 "名字 - 简介", 3-5个)
         - rules: 核心规则列表 (每个元素是字符串, 3-5条)
-        只返回纯JSON！`
-      });
+        只返回纯JSON！`;
 
-      const text = response.text().replace(/```json/g, '').replace(/```/g, '');
-      const data = JSON.parse(text);
+      let text = '';
+      if (apiKey && apiKey !== process.env.GEMINI_API_KEY && baseUrl) {
+         const response = await fetch(`${baseUrl.replace(/\/$/, '')}/chat/completions`, {
+            method: 'POST',
+            headers: {
+               'Content-Type': 'application/json',
+               'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+               model: model,
+               messages: [{ role: 'user', content: promptStr }]
+            })
+         });
+         const data = await response.json();
+         text = data.choices?.[0]?.message?.content || '';
+      } else {
+         const ai = new GoogleGenAI({ apiKey: apiKey });
+         const response = await ai.models.generateContent({ model: model, contents: promptStr });
+         text = response.text || '';
+      }
+
+      const cleanText = text.replace(/```json/gi, '').replace(/```/g, '');
+      const data = JSON.parse(cleanText);
       if (data) {
         setEditingWorldview({ ...editingWorldview, ...data });
         setPrompt('');
