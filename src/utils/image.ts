@@ -1,4 +1,4 @@
-export const compressImage = (file: File, maxWidth = 800, maxHeight = 800, quality = 0.7): Promise<string> => {
+export const compressImage = (file: File, maxWidth = 500, maxHeight = 500, quality = 0.5): Promise<string> => {
   return new Promise((resolve, reject) => {
     // If it's a GIF, don't compress via canvas to preserve animation
     if (file.type === 'image/gif') {

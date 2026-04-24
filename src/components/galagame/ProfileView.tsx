@@ -140,6 +140,16 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onOpenProtagonist, onOpenWorl
         )}
       </div>
 
+      <div className="px-6 pb-6">
+        <div className="bg-[#fcefee]/30 border border-[#fcefee] rounded-2xl p-4 flex flex-col gap-2">
+           <h3 className="text-xs font-bold text-[#d49a9f] tracking-widest leading-relaxed">关于存储空间限额</h3>
+           <p className="text-[10px] text-gray-500 leading-relaxed text-justify">
+             受限于浏览器的本地存储（LocalStorage）物理限制，总容量通常为5MB。为防止出现“无法编辑角色”或“加载存档失败”的<code>QuotaExceededError</code>错误，系统已采用自动压缩技术。<br/><br/>
+             <b>扩容建议：</b>浏览器本身无法突破5MB限制，建议在使用图片时尽量使用体积小的纯色背景或在网上找现成的图片链接（将图片上传至图床，然后在输入框粘贴外链），避免上传过大的高清本地图片。
+           </p>
+        </div>
+      </div>
+
       {/* Main Menu */}
       <div className="border-l border-t border-gray-100">
         {[

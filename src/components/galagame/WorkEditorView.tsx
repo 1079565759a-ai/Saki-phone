@@ -42,6 +42,7 @@ export const WorkEditorView: React.FC<WorkEditorViewProps> = ({ work, onClose, a
       id: Date.now(),
       title: `第${chapters.length + 1}章`,
       desc: '', // 内容描述
+      bgms: [], // 音乐URL
       branchEndings: [''], // 分支结局
       trueEnding: '' // 真实结局
     };
@@ -163,6 +164,27 @@ export const WorkEditorView: React.FC<WorkEditorViewProps> = ({ work, onClose, a
                   <div>
                     <label className="text-[9px] text-gray-400 font-bold uppercase tracking-widest block mb-1">内容描述 (AI 生成参考)</label>
                     <textarea value={chap.desc} onChange={e => updateChapter(cIdx, 'desc', e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-xs h-20 resize-none outline-none focus:border-[#d49a9f] transition-all" placeholder="主角来到新的小镇，遇见了..." />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[9px] text-gray-400 font-bold uppercase tracking-widest flex items-center justify-between">
+                      <span>背景音乐 / BGMs (外链URL)</span>
+                      <button onClick={() => updateChapter(cIdx, 'bgms', [...(chap.bgms || []), ''])} className="text-[#d49a9f]"><Plus className="w-3 h-3"/></button>
+                    </label>
+                    {(chap.bgms || []).map((bgm: string, bIdx: number) => (
+                      <div key={bIdx} className="flex gap-2 items-center">
+                        <input type="text" value={bgm} onChange={e => {
+                          const newB = [...(chap.bgms || [])];
+                          newB[bIdx] = e.target.value;
+                          updateChapter(cIdx, 'bgms', newB);
+                        }} className="flex-1 bg-gray-50 border border-gray-100 rounded-lg py-1.5 px-3 text-xs outline-none focus:border-[#d49a9f]" placeholder="例如：https://example.com/music.mp3" />
+                        <button onClick={() => {
+                          const newB = [...(chap.bgms || [])];
+                          newB.splice(bIdx, 1);
+                          updateChapter(cIdx, 'bgms', newB);
+                        }} className="text-gray-300 hover:text-red-400"><X className="w-3 h-3"/></button>
+                      </div>
+                    ))}
                   </div>
 
                   <div className="space-y-2">

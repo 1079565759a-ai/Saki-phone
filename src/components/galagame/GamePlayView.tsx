@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Loader2, PlayCircle, LogOut } from 'lucide-react';
+import { ArrowLeft, Loader2, PlayCircle, LogOut, Settings2, Save, Download, X, Music } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
 import { cn } from '../../utils/cn';
 
@@ -49,6 +49,78 @@ export const GamePlayView: React.FC<GamePlayViewProps> = ({ game, onClose, appSt
   const [globalScene, setGlobalScene] = useState<string>(game.cover || '');
   
   const chapters = game.chapters || [];
+  
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [isPlayingBgm, setIsPlayingBgm] = useState(false);
+  const [currentBgmIndex, setCurrentBgmIndex] = useState(0);
+
+  const toggleBgm = () => {
+     if (audioRef.current) {
+        if (isPlayingBgm) {
+           audioRef.current.pause();
+           setIsPlayingBgm(false);
+        } else {
+           audioRef.current.play().then(() => setIsPlayingBgm(true)).catch(e => console.log('Autoplay blocked:', e));
+        }
+     }
+  };
+
+  useEffect(() => {
+     if (screen === 'playing' && chapters[currentChapterIndex]?.bgms?.length > 0) {
+        if (audioRef.current) {
+           audioRef.current.play().then(() => setIsPlayingBgm(true)).catch(e => console.log('Autoplay blocked:', e));
+        }
+     } else {
+        if (audioRef.current) {
+           audioRef.current.pause();
+           setIsPlayingBgm(false);
+        }
+     }
+  }, [screen, currentChapterIndex]);
+
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const STORAGE_KEY_PREFIX = 'gala_progress_';
+
+  const saveProgress = (auto = false) => {
+    if (lines.length === 0) return;
+    const progress = {
+      lines,
+      currentIndex,
+      options,
+      contextLog,
+      globalScene,
+      currentChapterIndex,
+      unlockedChapters,
+      customPlayerName
+    };
+    updateState(STORAGE_KEY_PREFIX + game.id, progress);
+    if (!auto) alert('✅ 存档成功！(已保存至本地)');
+  };
+
+  const loadProgress = () => {
+    const state = appState[STORAGE_KEY_PREFIX + game.id];
+    if (state && state.lines && state.lines.length > 0) {
+      setLines(state.lines);
+      setCurrentIndex(state.currentIndex);
+      setOptions(state.options);
+      setContextLog(state.contextLog);
+      setGlobalScene(state.globalScene);
+      setCurrentChapterIndex(state.currentChapterIndex);
+      setUnlockedChapters(state.unlockedChapters);
+      setCustomPlayerName(state.customPlayerName || '');
+      setScreen('playing');
+      setIsMenuOpen(false);
+      alert('✅ 读档成功！');
+    } else {
+      alert('❌ 没有找到当前作品的存档！(首次游玩请点击开始游戏)');
+    }
+  };
+
+  useEffect(() => {
+    if (screen === 'playing' && lines.length > 0) {
+      saveProgress(true);
+    }
+  }, [lines, currentIndex, screen]);
 
   const getPlayerName = () => {
     if (protagonistSettings.nameType === 'fixed') return protagonistSettings.fixedName || '主人公';
@@ -95,7 +167,18 @@ export const GamePlayView: React.FC<GamePlayViewProps> = ({ game, onClose, appSt
     };
   }, []);
 
-  const handleStartGame = (index: number = 0) => {
+  const handleStartGame = (index: number = 0, isContinue: boolean = false) => {
+    if (isContinue) {
+      const state = appState[STORAGE_KEY_PREFIX + game.id];
+      if (state && state.lines && state.lines.length > 0) {
+        loadProgress();
+        return;
+      } else {
+        alert('没有找到当前作品的存档，将从默认章节开始。');
+        index = Math.max(0, unlockedChapters.length - 1);
+      }
+    }
+
     setCurrentChapterIndex(index);
     if (protagonistSettings.nameType === 'custom' && !customPlayerName) {
        setScreen('name-input');
@@ -367,7 +450,7 @@ ${contextStr}
                   {['开始游戏', '继续', '章节', '番外篇', '设置'].map(btn => (
                     <button key={btn} onClick={() => {
                         if (btn === '开始游戏') handleStartGame(0);
-                        else if (btn === '继续') handleStartGame(Math.max(0, unlockedChapters.length - 1));
+                        else if (btn === '继续') handleStartGame(0, true);
                         else if (btn === '章节') setScreen('chapters');
                         else if (btn === '番外篇') alert('番外内容还未解锁。');
                         else if (btn === '设置') alert('请前往系统主界面进行全局设置。');
@@ -492,20 +575,54 @@ ${contextStr}
                 </div>
               )}
 
-              <div className="relative z-20 p-6 flex justify-between items-center bg-gradient-to-b from-black/80 to-transparent">
-                <button onClick={() => setScreen('home')} className="text-white/70 hover:text-white bg-black/40 backdrop-blur-md p-2 rounded-full z-50 relative pointer-events-auto">
+              <div className="relative z-20 p-6 flex justify-between items-center bg-gradient-to-b from-black/80 to-transparent pointer-events-none">
+                <button onClick={() => setScreen('home')} className="text-white/70 hover:text-white bg-black/40 backdrop-blur-md p-2 rounded-full z-50 relative pointer-events-auto shadow-lg border border-white/10">
                   <ArrowLeft className="w-4 h-4" />
                 </button>
+                <div className="flex gap-4 pointer-events-auto relative z-50">
+                   {chapters[currentChapterIndex]?.bgms?.length > 0 && (
+                     <button onClick={toggleBgm} className="text-white/70 hover:text-white bg-black/40 backdrop-blur-md p-2 rounded-full shadow-lg border border-white/10">
+                        <Music className={cn("w-5 h-5", isPlayingBgm ? "text-[#d49a9f]" : "text-white/50 line-through")} />
+                     </button>
+                   )}
+                   <button onClick={() => setIsMenuOpen(true)} className="text-white/70 hover:text-white bg-black/40 backdrop-blur-md p-2 rounded-full shadow-lg border border-white/10">
+                      <Settings2 className="w-5 h-5" />
+                   </button>
+                </div>
               </div>
 
+              {/* Background Music Player */}
+              {chapters[currentChapterIndex]?.bgms?.[currentBgmIndex] && (
+                 <audio ref={audioRef} src={chapters[currentChapterIndex].bgms[currentBgmIndex]} loop />
+              )}
+
+              {/* In-Game Menu overlay */}
+              <AnimatePresence>
+                {isMenuOpen && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-[100] bg-black/80 backdrop-blur-lg flex items-center justify-center p-4">
+                     <div className="bg-gray-900 border border-white/20 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl relative pointer-events-auto">
+                        <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
+                           <h3 className="text-white font-bold tracking-widest">系统菜单</h3>
+                           <button onClick={() => setIsMenuOpen(false)} className="text-white/50 hover:text-white"><X className="w-5 h-5"/></button>
+                        </div>
+                        <div className="p-4 flex flex-col gap-3">
+                           <button onClick={() => saveProgress(false)} className="flex items-center justify-center gap-2 p-4 bg-white/5 hover:bg-[#d49a9f]/20 border border-white/10 rounded-xl text-white tracking-widest transition-colors"><Save className="w-4 h-4"/> 存档 (Save)</button>
+                           <button onClick={() => loadProgress()} className="flex items-center justify-center gap-2 p-4 bg-white/5 hover:bg-[#d49a9f]/20 border border-white/10 rounded-xl text-white tracking-widest transition-colors"><Download className="w-4 h-4"/> 读档 (Load)</button>
+                           <button onClick={() => { setIsMenuOpen(false); setScreen('home'); }} className="flex items-center justify-center gap-2 p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/70 hover:text-white tracking-widest transition-colors mt-4">返回标题界面</button>
+                        </div>
+                     </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               {/* Classic Visual Novel Dialogue Box */}
-              <div className="absolute bottom-0 left-0 right-0 px-4 pb-6 sm:px-12 sm:pb-8 pt-12 z-30 flex flex-col justify-end items-center select-none bg-gradient-to-t from-black/80 to-transparent pointer-events-none h-[33vh]">
+              <div className="absolute bottom-0 left-0 right-0 px-4 pb-6 sm:px-12 sm:pb-8 z-30 flex flex-col justify-end items-center select-none pointer-events-none h-[30vh]">
                  {isGenerating ? (
-                    <div className="w-full max-w-5xl h-full flex items-center justify-center bg-black/40 backdrop-blur-md rounded-xl border border-white/10">
+                    <div className="w-full max-w-5xl h-full flex items-center justify-center bg-black/50 backdrop-blur-md rounded-xl border border-white/20">
                        <Loader2 className="w-8 h-8 text-white/50 animate-spin" />
                     </div>
                  ) : currentLine ? (
-                    <div className="w-full max-w-5xl h-full relative bg-black/60 backdrop-blur-md border-[1.5px] border-white/20 rounded-xl p-6 sm:p-8 shadow-2xl pointer-events-auto">
+                    <div className="w-full max-w-5xl h-full relative bg-black/50 backdrop-blur-md border-[1.5px] border-white/20 rounded-xl p-6 sm:p-8 shadow-2xl pointer-events-auto">
                        {currentLine.type !== 'narrator' && currentLine.name && (
                           <div className="absolute -top-5 left-6 sm:left-10 bg-gradient-to-r from-[#e8b5be] to-[#d49a9f] px-6 py-1.5 rounded-lg text-white font-bold tracking-widest shadow-xl border border-white/20">
                              {currentLine.name}
