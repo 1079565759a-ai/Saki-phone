@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Play, FastForward, Loader2 } from 'lucide-react';
+import { ArrowLeft, Play, FastForward, Loader2, Settings, List, PlayCircle, LogOut } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
+import { cn } from '../../utils/cn';
 
 interface GamePlayViewProps {
   game: any;
@@ -10,8 +11,16 @@ interface GamePlayViewProps {
   updateState: (key: string, value: any) => void;
 }
 
+type GameScreen = 'loading' | 'home' | 'playing' | 'chapters' | 'extras';
+
 export const GamePlayView: React.FC<GamePlayViewProps> = ({ game, onClose, appState, updateState }) => {
-  const [messages, setMessages] = useState<{ role: string, text: string, type?: string, character?: string, sceneImage?: string }[]>([]);
+  const [screen, setScreen] = useState<GameScreen>('loading');
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  
+  const [currentChapterIndex, setCurrentChapterIndex] = useState(0);
+  const [unlockedChapters, setUnlockedChapters] = useState<number[]>([0]); // indices
+  
+  const [messages, setMessages] = useState<{ role: string, text: string, character?: string, sceneImage?: string, characterImage?: string }[]>([]);
   const [inputText, setInputText] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentSceneImage, setCurrentSceneImage] = useState<string>('');
@@ -19,64 +28,65 @@ export const GamePlayView: React.FC<GamePlayViewProps> = ({ game, onClose, appSt
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const chapters = game.chapters || [];
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  // Initial prompt generation
-  useEffect(() => {
-    if (messages.length === 0) {
-      startGame();
+    if (screen === 'loading') {
+      const interval = setInterval(() => {
+        setLoadingProgress(p => {
+          if (p >= 100) {
+            clearInterval(interval);
+            setTimeout(() => setScreen('home'), 500);
+            return 100;
+          }
+          return p + 5;
+        });
+      }, 50);
+      return () => clearInterval(interval);
     }
-  }, []);
+  }, [screen]);
 
-  const startGame = async () => {
+  useEffect(() => {
+    if (screen === 'playing') {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, screen]);
+
+  const startChapter = async (index: number) => {
+    setCurrentChapterIndex(index);
+    setScreen('playing');
+    setMessages([]);
     setIsGenerating(true);
-    let worldViewDesc = '';
-    if (game.worldview) {
-      worldViewDesc = `世界观背景：${game.worldview.background}。势力：${game.worldview.factions?.map((f: any) => f.name).join(', ')}。规则：${game.worldview.rules?.join(', ')}`;
-    }
+
+    const chapter = chapters[index] || { title: '启程', desc: '新的一章开始' };
     
+    // Construct game context
+    let worldViewDesc = game.worldview ? `世界观背景：${game.worldview.background}。` : '';
+    let currChapterDesc = `当前章节：${chapter.title}。情节概述：${chapter.desc}。`;
+    let endingsDesc = `如果玩家的行动导致悲剧或提前结束，你可以在结尾输出 [Ending: Bad]。如果玩家的行动完全符合以下真实结局设定，请输出 [Ending: True]。\n真实结局参考：${chapter.trueEnding || '无'}`;
+
     let styleDesc = '';
-    if (game.style) {
-      const styleObj = appState.galaStyles?.find((s: any) => s.name === game.style);
+    if (game.styleId) {
+      const styleObj = appState.galaStyles?.find((s: any) => s.id == game.styleId);
       if (styleObj) {
-        styleDesc = `文风要求：${styleObj.desc}`;
+        styleDesc = `附加文风要求：${styleObj.desc}`;
       }
     }
 
-    let charactersDesc = '';
-    const mainChar = appState.galaCharacters?.find((c: any) => c.name === game.mainCharacter);
-    const otherChars = (game.otherCharacters || []).map((name: string) => appState.galaCharacters?.find((c: any) => c.name === name)).filter(Boolean);
-    
-    if (mainChar) charactersDesc += `主角【${mainChar.name}】：${mainChar.persona}，${mainChar.desc}。`;
-    otherChars.forEach((c: any) => {
-      charactersDesc += `配角【${c.name}】：${c.persona}，${c.desc}。`;
-    });
-
-    let scenesDesc = '';
-    const gameScenes = (game.scenes || []).map((name: string) => appState.galaScenes?.find((s: any) => s.name === name)).filter(Boolean);
-    gameScenes.forEach((s: any) => {
-      scenesDesc += `场景【${s.name}】：${s.desc}。`;
-    });
-
-    const initPrompt = `你是一个出色的视觉小说游戏编剧/旁白。
-接下来我们要玩一个视觉小说游戏。
-游戏标题：${game.title}
-游戏简介：${game.intro}
+    const initPrompt = `你是一个视觉小说(Galgame)游戏引擎兼文案。
+游戏：${game.title}
 ${worldViewDesc}
-${charactersDesc}
-${scenesDesc}
+${currChapterDesc}
+${endingsDesc}
 ${styleDesc}
 
-请你写出游戏的开场，包含场景描述、人物动作以及对话。如果当前有场景，请在文本最开始以 [Scene: 场景名称] 标注。如果有角色正在说话，请以 [Char: 角色名称: 表情(happy/angry/sad/joy/normal)] 标注。
-字数大约150-200字。在结尾留出让玩家（即"我"）做出选择或行动的悬念。`;
+请输出本章开头，包含场景、人物和对话。
+格式要求：
+[Scene: 场景名] (改变背景)
+[Char: 角色名: 情绪] (改变立绘，情绪如happy/angry/sad)
+开始你的叙述。限制150-200字，结尾留出互动悬念。`;
 
-    await fetchAiResponse(initPrompt, true);
+    await fetchAiResponse(initPrompt);
   };
 
   const handleSend = async () => {
@@ -86,37 +96,31 @@ ${styleDesc}
     setInputText('');
     setIsGenerating(true);
 
-    const context = messages.slice(-5).map(m => `${m.role === 'user' ? '玩家输入' : '游戏系统'}: ${m.text}`).join('\n');
-    const prompt = `根据玩家的输入继续推进剧情发展。
-之前剧情：
+    const context = messages.slice(-6).map(m => `${m.role === 'user' ? '我' : '游戏'}: ${m.text}`).join('\n');
+    const prompt = `根据我的回答继续推进。
+已发生：
 ${context}
-玩家最新行动/回应：${userText}
-请你回应接下来的剧情，同样可以使用 [Scene: 场景名称] 和 [Char: 角色名称: 表情] 来表示场景或人物。字数大约100-200字。`;
 
-    await fetchAiResponse(prompt, false);
+我的行动/回答：${userText}
+请继续叙述并做出反应。需要时使用[Scene: X]或[Char: X: Emo]。如果达成真结局或坏结局条件，输出相应的[Ending: True]或[Ending: Bad]。限制100-200字。`;
+
+    await fetchAiResponse(prompt);
   };
 
-  const fetchAiResponse = async (prompt: string, isInit: boolean) => {
+  const fetchAiResponse = async (prompt: string) => {
     try {
       const apiKey = appState.apiKey || localStorage.getItem('custom_api_key') || process.env.GEMINI_API_KEY || '';
       const baseUrl = appState.apiBaseUrl || localStorage.getItem('custom_api_url');
       const model = appState.selectedModel || localStorage.getItem('custom_api_model') || 'gemini-3-flash-preview';
 
-      const ai = new GoogleGenAI({ 
-        apiKey: apiKey,
-        ...(baseUrl ? { baseUrl } : {})
-      });
+      const ai = new GoogleGenAI({ apiKey: apiKey, ...(baseUrl ? { baseUrl } : {}) });
       
-      const response = await ai.models.generateContent({
-        model: model,
-        contents: prompt
-      });
-
+      const response = await ai.models.generateContent({ model: model, contents: prompt });
       let text = response.text || '';
       
-      // Parse logic for Scene and Char tags
       let sceneMatch = text.match(/\[Scene:\s*(.+?)\]/);
       let charMatch = text.match(/\[Char:\s*(.+?):\s*(.+?)\]/);
+      let endMatch = text.match(/\[Ending:\s*(True|Bad)\]/i);
 
       let parsedScene = currentSceneImage;
       let parsedCharImg = currentCharacterImage;
@@ -124,8 +128,8 @@ ${context}
 
       if (sceneMatch) {
         const sceneName = sceneMatch[1].trim();
-        const foundScene = appState.galaScenes?.find((s: any) => s.name.includes(sceneName) || sceneName.includes(s.name));
-        if (foundScene && foundScene.images && foundScene.images.length > 0) {
+        const foundScene = appState.galaScenes?.find((s: any) => s.name.includes(sceneName));
+        if (foundScene?.images?.[0]) {
           parsedScene = foundScene.images[0];
           setCurrentSceneImage(parsedScene);
         }
@@ -136,22 +140,29 @@ ${context}
         const charName = charMatch[1].trim();
         const emo = charMatch[2].trim().toLowerCase();
         parsedCharName = charName;
-        const foundChar = appState.galaCharacters?.find((c: any) => c.name.includes(charName) || charName.includes(c.name));
+        const foundChar = appState.galaCharacters?.find((c: any) => c.name.includes(charName));
         if (foundChar) {
-          if (foundChar.emotions && foundChar.emotions[emo]) {
-            parsedCharImg = foundChar.emotions[emo];
-          } else {
-            parsedCharImg = foundChar.photo || '';
-          }
+          parsedCharImg = foundChar.emotions?.[emo] || foundChar.photo || '';
           setCurrentCharacterImage(parsedCharImg);
         }
         text = text.replace(charMatch[0], '').trim();
       }
 
+      if (endMatch) {
+        const endType = endMatch[1].toLowerCase();
+        text = text.replace(endMatch[0], '').trim();
+        text += `\n\n【达成结局：${endType === 'true' ? 'True End - 真实结局' : 'Bad End - 遗憾终结'}】`;
+        
+        if (endType === 'true') {
+          if (!unlockedChapters.includes(currentChapterIndex + 1)) {
+             setUnlockedChapters(prev => [...prev, currentChapterIndex + 1]);
+          }
+        }
+      }
+
       setMessages(prev => [...prev, { 
         role: 'ai', 
         text: text,
-        type: parsedCharName ? 'dialogue' : 'narrative',
         character: parsedCharName,
         characterImage: parsedCharImg,
         sceneImage: parsedScene
@@ -166,96 +177,172 @@ ${context}
   };
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      className="fixed inset-0 z-[200] bg-black flex flex-col font-serif"
-    >
-      {/* Background Scene */}
-      <div className="absolute inset-0 z-0">
-        <img 
-          src={currentSceneImage || game.cover || 'https://images.unsplash.com/photo-1534447677768-be436bb09401?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'} 
-          className="w-full h-full object-cover opacity-60 transition-all duration-1000" 
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black" />
-      </div>
-
-      {/* Header */}
-      <div className="px-8 py-6 flex items-center justify-between z-10 relative">
-        <button onClick={onClose} className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/60 transition-colors">
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <div className="text-white text-xs tracking-widest font-bold px-4 py-2 bg-black/40 backdrop-blur-md rounded-full">
-          {game.title}
-        </div>
-        <button className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/60 transition-colors">
-          <FastForward className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* Main Play Area */}
-      <div className="flex-1 overflow-y-auto px-6 py-4 z-10 relative flex flex-col justify-end">
-        <div className="space-y-6 max-w-2xl mx-auto w-full pb-32">
-          {messages.map((msg, idx) => (
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              key={idx} 
-              className={cn(
-                "p-5 rounded-2xl backdrop-blur-md",
-                msg.role === 'user' ? "bg-[#d49a9f]/80 text-white ml-auto max-w-[80%]" : "bg-black/60 text-gray-100 max-w-[90%]"
-              )}
-            >
-              {msg.role === 'ai' && msg.character && (
-                <div className="text-[#fcefee] text-[10px] font-bold tracking-widest uppercase mb-2">
-                  {msg.character}
-                </div>
-              )}
-              {/* If character speaks, Optionally show portrait? We have currentCharacterImage set independently but we can just rely on the background or small portraits */}
-              <p className="text-sm leading-relaxed tracking-wide text-shadow-sm">
-                {msg.text}
+    <div className="fixed inset-0 z-[200] bg-black flex items-center justify-center font-serif">
+      {/* Landscape Game Container */}
+      <div className="relative w-full h-full sm:aspect-video sm:w-[90vw] sm:max-w-[1280px] sm:h-auto sm:max-h-[85vh] bg-gray-900 shadow-2xl overflow-hidden rounded-none sm:rounded-xl portrait:rotate-0 landscape:rotate-0">
+        <AnimatePresence mode="wait">
+          
+          {/* Loading Screen */}
+          {screen === 'loading' && (
+            <motion.div key="loading" exit={{ opacity: 0 }} className="absolute inset-0 bg-black flex flex-col items-center justify-center z-50">
+              <div className="w-48 h-1 bg-gray-800 rounded-full overflow-hidden mt-8">
+                <motion.div 
+                  className="h-full bg-white"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${loadingProgress}%` }}
+                  transition={{ ease: "linear" }}
+                />
+              </div>
+              <p className="text-white/60 text-[10px] uppercase tracking-[0.3em] font-bold mt-4 font-mono">
+                {loadingProgress === 100 ? 'LOADING COMPLETE' : 'SYSTEM STARTING'}
               </p>
             </motion.div>
-          ))}
-          {isGenerating && (
-            <motion.div className="p-4 bg-black/40 backdrop-blur-md rounded-2xl max-w-[80%] flex items-center gap-3 text-gray-300">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span className="text-xs tracking-widest">思考中...</span>
+          )}
+
+          {/* Home Screen */}
+          {screen === 'home' && (
+            <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 z-40 bg-black">
+              {/* Cover Image */}
+              <img src={game.cover || 'https://images.unsplash.com/photo-1542204165-65bf26472b9b?auto=format&fit=crop&q=80'} className="absolute inset-0 w-full h-full object-cover opacity-60" />
+              <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent" />
+              
+              <button onClick={onClose} className="absolute top-6 left-6 text-white/50 hover:text-white transition-colors z-50 p-2">
+                <LogOut className="w-5 h-5" />
+              </button>
+
+              <div className="absolute top-1/4 left-16 max-w-md">
+                <h1 className="text-4xl sm:text-5xl font-bold text-white tracking-widest drop-shadow-xl">{game.title}</h1>
+                <p className="text-white/70 mt-4 text-sm leading-relaxed tracking-wider line-clamp-3 drop-shadow-md">{game.intro}</p>
+                
+                <div className="mt-16 flex flex-col gap-6">
+                  {['开始', '继续', '章节', '番外', '设置'].map((btn, i) => (
+                    <button 
+                      key={btn}
+                      onClick={() => {
+                        if (btn === '开始') startChapter(0);
+                        else if (btn === '章节') setScreen('chapters');
+                      }}
+                      className="text-left text-white/80 hover:text-white text-lg tracking-[0.5em] font-bold w-fit group flex items-center transition-all"
+                    >
+                      <span className="w-0 overflow-hidden group-hover:w-6 transition-all duration-300 opacity-0 group-hover:opacity-100"><PlayCircle className="w-4 h-4"/></span>
+                      <span className="group-hover:translate-x-2 transition-transform">{btn}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </motion.div>
           )}
-          <div ref={messagesEndRef} />
-        </div>
 
-        {/* Character Portrait Layer (Optional, shown if exist) */}
-        {currentCharacterImage && (
-          <div className="absolute bottom-0 right-0 w-2/3 h-2/3 pointer-events-none z-[-1] opacity-90 transition-all duration-1000">
-            <img src={currentCharacterImage} className="w-full h-full object-contain object-bottom drop-shadow-2xl" />
-          </div>
-        )}
-      </div>
+          {/* Chapters Screen */}
+          {screen === 'chapters' && (
+            <motion.div key="chapters" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 z-40 bg-black/90 backdrop-blur-md p-8 flex flex-col">
+              <button onClick={() => setScreen('home')} className="mb-8 text-white/50 hover:text-white flex items-center gap-2 text-sm tracking-widest w-fit">
+                <ArrowLeft className="w-4 h-4" /> 返回
+              </button>
+              <h2 className="text-2xl text-white tracking-[0.3em] font-bold mb-8">章节选择</h2>
+              <div className="flex-1 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 pb-20">
+                {chapters.map((chap: any, idx: number) => {
+                  const isUnlocked = unlockedChapters.includes(idx);
+                  return (
+                    <button 
+                      key={idx}
+                      onClick={() => isUnlocked && startChapter(idx)}
+                      disabled={!isUnlocked}
+                      className={cn(
+                        "p-6 text-left border rounded-lg transition-all flex flex-col gap-2",
+                        isUnlocked ? "bg-white/5 border-white/20 hover:bg-white/10 hover:border-white/40 text-white" : "bg-black/50 border-white/5 text-white/30 cursor-not-allowed"
+                      )}
+                    >
+                      <span className="text-xs uppercase tracking-widest font-mono">Chapter {idx + 1}</span>
+                      <span className="text-lg font-bold truncate tracking-widest">{chap.title}</span>
+                      {!isUnlocked && <span className="text-[10px] mt-2 tracking-widest bg-white/10 w-fit px-2 py-1 rounded">达成前置真结局解锁</span>}
+                    </button>
+                  )
+                })}
+                {chapters.length === 0 && (
+                  <div className="col-span-full p-12 text-center text-white/50 tracking-widest border border-white/10 border-dashed rounded-xl">
+                    正在开发中...
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
 
-      {/* Input Area */}
-      <div className="px-6 py-6 border-t border-white/10 z-20 relative bg-black/40 backdrop-blur-xl">
-        <div className="max-w-2xl mx-auto flex gap-4">
-          <input 
-            type="text" 
-            value={inputText}
-            onChange={e => setInputText(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSend()}
-            placeholder={isGenerating ? "等待响应..." : "你的行动或回答..."}
-            disabled={isGenerating}
-            className="flex-1 bg-white/10 border border-white/20 rounded-full px-6 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-white/40 transition-all"
-          />
-          <button 
-            onClick={handleSend}
-            disabled={!inputText.trim() || isGenerating}
-            className="w-12 h-12 rounded-full bg-[#d49a9f] flex items-center justify-center text-white disabled:opacity-50 hover:bg-[#c5a3a5] transition-colors"
-          >
-            <Play className="w-5 h-5 fill-current" />
-          </button>
-        </div>
+          {/* Gameplay Screen */}
+          {screen === 'playing' && (
+            <motion.div key="playing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 z-40 bg-black flex flex-col">
+              {/* Scene Image */}
+              <div className="absolute inset-0 z-0">
+                <img src={currentSceneImage || game.cover} className="w-full h-full object-cover opacity-40" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30" />
+              </div>
+
+              {/* Character Image */}
+              {currentCharacterImage && (
+                <div className="absolute bottom-1/4 right-10 w-1/3 h-2/3 pointer-events-none z-10 flex items-end justify-center">
+                  <motion.img 
+                    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+                    src={currentCharacterImage} className="max-w-full max-h-full object-contain object-bottom drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]" 
+                  />
+                </div>
+              )}
+
+              {/* Header */}
+              <div className="relative z-20 p-6 flex justify-between items-center bg-gradient-to-b from-black/60 to-transparent">
+                <button onClick={() => setScreen('home')} className="text-white/70 hover:text-white transition-colors bg-black/40 backdrop-blur-md p-2 rounded-full border border-white/10">
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+                <div className="text-white/50 text-[10px] uppercase font-mono tracking-widest">
+                  Chapter {currentChapterIndex + 1}
+                </div>
+              </div>
+
+              {/* Chat/Novel Log */}
+              <div className="flex-1 overflow-y-auto px-8 sm:px-24 py-4 relative z-20 flex flex-col gap-6 scrollbar-hide mb-28">
+                {messages.map((msg, i) => (
+                  <div key={i} className={cn("max-w-2xl", msg.role === 'user' ? "self-end" : "self-start")}>
+                    {msg.role === 'ai' && msg.character && (
+                      <div className="text-[#fcefee] text-xs font-bold tracking-[0.2em] mb-1 pl-2 text-shadow-sm">{msg.character}</div>
+                    )}
+                    <div className={cn("p-4 rounded-xl text-sm leading-relaxed tracking-wider shadow-xl backdrop-blur-md border border-white/10", msg.role === 'user' ? "bg-white/20 text-white" : "bg-black/60 text-white/90")}>
+                      {msg.text.split('\n').map((line, j) => <p key={j} className="mb-2 last:mb-0">{line}</p>)}
+                    </div>
+                  </div>
+                ))}
+                {isGenerating && (
+                  <div className="self-start p-4 text-white/50 text-xs tracking-widest flex items-center gap-2">
+                    <Loader2 className="w-3 h-3 animate-spin"/> 加载中...
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Input */}
+              <div className="absolute bottom-0 left-0 right-0 p-6 z-30 bg-gradient-to-t from-black/90 to-transparent">
+                <div className="max-w-3xl mx-auto flex gap-4">
+                  <input 
+                    type="text" 
+                    value={inputText}
+                    onChange={e => setInputText(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleSend()}
+                    placeholder="在这里输入你的行动或对话..."
+                    className="flex-1 bg-black/50 border border-white/20 backdrop-blur-md rounded-lg px-6 py-4 text-white placeholder:text-white/30 focus:outline-none focus:border-white/50 transition-all text-sm tracking-wider"
+                    disabled={isGenerating}
+                  />
+                  <button 
+                    onClick={handleSend}
+                    disabled={!inputText.trim() || isGenerating}
+                    className="px-8 bg-white text-black font-bold tracking-widest rounded-lg disabled:opacity-50 hover:bg-gray-200 transition-colors"
+                  >
+                    发送
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+        </AnimatePresence>
       </div>
-    </motion.div>
+    </div>
   );
 };

@@ -17,44 +17,17 @@ import { compressImage } from '../../utils/image';
 
 interface MyWorksViewProps {
   onOpenCreationFlow: () => void;
+  onEditWork: (work: any) => void;
   appState: any;
   updateState: (key: string, value: any) => void;
 }
 
-const MyWorksView: React.FC<MyWorksViewProps> = ({ onOpenCreationFlow, appState, updateState }) => {
+const MyWorksView: React.FC<MyWorksViewProps> = ({ onOpenCreationFlow, onEditWork, appState, updateState }) => {
   const works = appState.galaMyGames || [];
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [editingId, setEditingId] = useState<number | null>(null);
 
   const handleDelete = (id: number) => {
     const updatedWorks = works.filter((w: any) => w.id !== id);
     updateState('galaMyGames', updatedWorks);
-  };
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || editingId === null) return;
-
-    try {
-      const compressedDataUrl = await compressImage(file);
-      const updatedWorks = works.map((w: any) => 
-        w.id === editingId ? { ...w, cover: compressedDataUrl } : w
-      );
-      updateState('galaMyGames', updatedWorks);
-    } catch (error) {
-      console.error("Failed to process image", error);
-    } finally {
-      setEditingId(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  };
-
-  const triggerImageUpload = (id: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setEditingId(id);
-    fileInputRef.current?.click();
   };
 
   if (works.length === 0) {
@@ -95,7 +68,6 @@ const MyWorksView: React.FC<MyWorksViewProps> = ({ onOpenCreationFlow, appState,
 
   return (
     <div className="flex-1 overflow-y-auto pb-24 bg-gradient-to-b from-[#fdfbfb] to-[#f5f1f0] relative h-full">
-      <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
 
       {/* Decorative Petals Background */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-50 z-0">
@@ -121,13 +93,10 @@ const MyWorksView: React.FC<MyWorksViewProps> = ({ onOpenCreationFlow, appState,
         <div className="space-y-4">
           {works.map((work: any) => (
             <motion.div key={work.id} layoutId={`work-${work.id}`} className="group relative rounded-2xl bg-white/60 backdrop-blur-md shadow-[0_8px_24px_rgba(212,154,159,0.08)] border border-[#ede6e6] overflow-hidden flex flex-col">
-              <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#fcefee]/50">
+              <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#fcefee]/50 cursor-pointer" onClick={() => onEditWork(work)}>
                 <img src={work.cover} alt={work.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" referrerPolicy="no-referrer" />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#c5a3a5]/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                  <button onClick={(e) => triggerImageUpload(work.id, e)} className="w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center text-[#d49a9f] hover:bg-white shadow-sm">
-                    <Camera className="w-4 h-4" />
-                  </button>
                   <button onClick={(e) => { e.stopPropagation(); handleDelete(work.id); }} className="w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center text-[#d49a9f] hover:bg-white shadow-sm">
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -147,7 +116,7 @@ const MyWorksView: React.FC<MyWorksViewProps> = ({ onOpenCreationFlow, appState,
                     <BarChart2 className="w-3.5 h-3.5" />
                     <span className="text-[9px] tracking-widest">数据</span>
                   </div>
-                  <div className="flex items-center gap-1 text-[#c9b8b8] group-hover:text-[#c5a3a5] transition-colors cursor-pointer" onClick={(e) => { e.stopPropagation(); onOpenCreationFlow(); }}>
+                  <div className="flex items-center gap-1 text-[#c9b8b8] group-hover:text-[#c5a3a5] transition-colors cursor-pointer" onClick={(e) => { e.stopPropagation(); onEditWork(work); }}>
                     <Edit3 className="w-3.5 h-3.5" />
                     <span className="text-[9px] tracking-widest">编辑</span>
                   </div>

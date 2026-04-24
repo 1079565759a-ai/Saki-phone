@@ -27,6 +27,7 @@ import { CharacterManagerView } from './galagame/CharacterManagerView';
 import { SceneManagerView } from './galagame/SceneManagerView';
 import { StyleManagerView } from './galagame/StyleManagerView';
 import { GamePlayView } from './galagame/GamePlayView';
+import { WorkEditorView } from './galagame/WorkEditorView';
 import Splash from './Splash';
 
 interface GalaGameAppProps {
@@ -50,6 +51,7 @@ const GalaGameApp: React.FC<GalaGameAppProps> = ({ onClose, language = 'zh', isF
   const [showSceneManager, setShowSceneManager] = useState(false);
   const [showStyleManager, setShowStyleManager] = useState(false);
   const [playingGame, setPlayingGame] = useState<any>(null);
+  const [editingWork, setEditingWork] = useState<any>(null);
   const [showSplash, setShowSplash] = useState(() => {
     return !sessionStorage.getItem('gala_splash_shown');
   });
@@ -95,7 +97,7 @@ const GalaGameApp: React.FC<GalaGameAppProps> = ({ onClose, language = 'zh', isF
           />
         );
       case 'my-works':
-        return <MyWorksView onOpenCreationFlow={() => setShowCreationFlow(true)} appState={appState} updateState={updateState} />;
+        return <MyWorksView onOpenCreationFlow={() => setShowCreationFlow(true)} onEditWork={setEditingWork} appState={appState} updateState={updateState} />;
       default:
         return null;
     }
@@ -140,6 +142,14 @@ const GalaGameApp: React.FC<GalaGameAppProps> = ({ onClose, language = 'zh', isF
           <GamePlayView
             game={playingGame}
             onClose={() => setPlayingGame(null)}
+            appState={appState}
+            updateState={updateState}
+          />
+        )}
+        {editingWork && (
+          <WorkEditorView
+            work={editingWork}
+            onClose={() => setEditingWork(null)}
             appState={appState}
             updateState={updateState}
           />
