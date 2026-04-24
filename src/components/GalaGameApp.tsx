@@ -28,6 +28,7 @@ import { SceneManagerView } from './galagame/SceneManagerView';
 import { StyleManagerView } from './galagame/StyleManagerView';
 import { GamePlayView } from './galagame/GamePlayView';
 import { WorkEditorView } from './galagame/WorkEditorView';
+import { ProtagonistManagerView } from './galagame/ProtagonistManagerView';
 import Splash from './Splash';
 
 interface GalaGameAppProps {
@@ -50,6 +51,7 @@ const GalaGameApp: React.FC<GalaGameAppProps> = ({ onClose, language = 'zh', isF
   const [showCharacterManager, setShowCharacterManager] = useState(false);
   const [showSceneManager, setShowSceneManager] = useState(false);
   const [showStyleManager, setShowStyleManager] = useState(false);
+  const [showProtagonistManager, setShowProtagonistManager] = useState(false);
   const [playingGame, setPlayingGame] = useState<any>(null);
   const [editingWork, setEditingWork] = useState<any>(null);
   const [showSplash, setShowSplash] = useState(() => {
@@ -92,6 +94,7 @@ const GalaGameApp: React.FC<GalaGameAppProps> = ({ onClose, language = 'zh', isF
             onOpenCharacters={() => setShowCharacterManager(true)}
             onOpenScenes={() => setShowSceneManager(true)}
             onOpenStyles={() => setShowStyleManager(true)}
+            onOpenProtagonist={() => setShowProtagonistManager(true)}
             appState={appState}
             updateState={updateState}
           />
@@ -150,6 +153,13 @@ const GalaGameApp: React.FC<GalaGameAppProps> = ({ onClose, language = 'zh', isF
           <WorkEditorView
             work={editingWork}
             onClose={() => setEditingWork(null)}
+            appState={appState}
+            updateState={updateState}
+          />
+        )}
+        {showProtagonistManager && (
+          <ProtagonistManagerView 
+            onClose={() => setShowProtagonistManager(false)}
             appState={appState}
             updateState={updateState}
           />

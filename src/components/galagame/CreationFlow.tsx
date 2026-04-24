@@ -60,11 +60,20 @@ const CreationFlow: React.FC<CreationFlowProps> = ({ onClose, onPublish, worldvi
     const newWork = {
       id: Date.now(),
       title: formData.title || 'Untitled',
+      intro: formData.intro || '',
       author: appState.currentUser?.nickname || '我',
       tags: formData.tags.length > 0 ? formData.tags : ['新作品'],
+      orientation: formData.orientation,
+      age: formData.age,
       cover: formData.cover,
+      worldview: formData.worldview,
+      protagonistType: formData.protagonist, // Wait, the form has a string '我' instead of type. Let's just save the raw formData fields.
+      otherCharacters: formData.otherCharacters,
+      scenes: formData.scenes,
+      style: formData.style,
       plays: 0,
-      likes: 0
+      likes: 0,
+      chapters: [] // Initialize empty chapter list
     };
     
     updateState('galaMyGames', [newWork, ...(appState.galaMyGames || [])]);

@@ -98,6 +98,32 @@ export const WorkEditorView: React.FC<WorkEditorViewProps> = ({ work, onClose, a
           </div>
 
           <div>
+            <label className="text-[10px] text-gray-500 font-bold uppercase tracking-widest block mb-2">Introduction / 作品简介</label>
+            <textarea value={editingWork.intro || ''} onChange={e => setEditingWork({...editingWork, intro: e.target.value})} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm h-32 resize-none outline-none focus:border-[#d49a9f] leading-relaxed" />
+          </div>
+
+          <div>
+            <label className="text-[10px] text-gray-500 font-bold uppercase tracking-widest block mb-2">Worldview / 世界观设定</label>
+            {appState.galaWorldviews?.length > 0 ? (
+              <select 
+                value={editingWork.worldview?.id || ''} 
+                onChange={e => {
+                  const wv = appState.galaWorldviews.find((w: any) => w.id === parseInt(e.target.value));
+                  setEditingWork({...editingWork, worldview: wv});
+                }}
+                className="w-full border-b border-gray-200 bg-transparent py-2 text-sm font-bold outline-none focus:border-[#d49a9f] text-gray-800"
+              >
+                <option value="">(不使用世界观)</option>
+                {appState.galaWorldviews.map((w: any) => (
+                  <option key={w.id} value={w.id}>{w.name}</option>
+                ))}
+              </select>
+            ) : (
+              <p className="text-xs text-gray-400">暂无世界观，在"我的"中配置</p>
+            )}
+          </div>
+
+          <div>
             <label className="text-[10px] text-gray-500 font-bold uppercase tracking-widest block mb-2">Style Reference / 文风设置</label>
             {stylesList.length === 0 ? (
               <p className="text-xs text-gray-400">暂无文风，在"我的" - "我的创作资产"中配置文风</p>

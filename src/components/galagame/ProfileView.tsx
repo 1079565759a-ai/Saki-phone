@@ -21,6 +21,7 @@ import { cn } from '../../utils/cn';
 import { compressImage } from '../../utils/image';
 
 interface ProfileViewProps {
+  onOpenProtagonist: () => void;
   onOpenWorldview: () => void;
   onOpenSettings: () => void;
   onOpenCharacters: () => void;
@@ -30,7 +31,7 @@ interface ProfileViewProps {
   updateState: (key: string, value: any) => void;
 }
 
-const ProfileView: React.FC<ProfileViewProps> = ({ onOpenWorldview, onOpenSettings, onOpenCharacters, onOpenScenes, onOpenStyles, appState, updateState }) => {
+const ProfileView: React.FC<ProfileViewProps> = ({ onOpenProtagonist, onOpenWorldview, onOpenSettings, onOpenCharacters, onOpenScenes, onOpenStyles, appState, updateState }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(appState.currentUser?.nickname || '芙糕');
   const [editSignature, setEditSignature] = useState(appState.galaSignature || '在文字的世界里寻找永恒的瞬间。');
@@ -141,6 +142,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onOpenWorldview, onOpenSettin
       {/* Main Menu */}
       <div className="border-l border-t border-gray-100">
         {[
+          { icon: User, label: '主人公（我）设定', action: onOpenProtagonist, desc: '游玩时的主管视点人设' },
           { icon: Sparkles, label: '我的世界观', action: onOpenWorldview, desc: 'AI生成的叙事架构' },
           { icon: Users, label: '我的角色', action: onOpenCharacters, desc: '管理创作角色库' },
           { icon: Map, label: '我的场景', action: onOpenScenes, desc: '故事发生地点集合' },
