@@ -15,7 +15,8 @@ import {
   Plus,
   X,
   Map,
-  BookOpen
+  BookOpen,
+  User
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { compressImage } from '../../utils/image';

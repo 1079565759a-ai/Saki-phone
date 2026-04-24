@@ -79,7 +79,9 @@ export const GamePlayView: React.FC<GamePlayViewProps> = ({ game, onClose, appSt
         if (elem.requestFullscreen && !document.fullscreenElement) {
           await elem.requestFullscreen().catch(() => {});
         }
+        // @ts-ignore
         if (window.screen && window.screen.orientation && window.screen.orientation.lock) {
+          // @ts-ignore
           await window.screen.orientation.lock('landscape').catch(() => {});
         }
       } catch (err) {}

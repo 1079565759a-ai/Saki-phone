@@ -1162,13 +1162,21 @@ export default function App() {
   const effectiveFullscreen = appState.isFullscreen || isStandalone;
 
   // Persist state
+  const lastAlertTimeRef = useRef<number>(0);
+  const [showQuotaToast, setShowQuotaToast] = useState(false);
+
   useEffect(() => {
     try {
       localStorage.setItem('gala_game_state', JSON.stringify(appState));
     } catch (e) {
       console.error('Failed to save state to localStorage:', e);
       if (e instanceof DOMException && e.name === 'QuotaExceededError') {
-         alert('存储空间不足！由于您上传的图片过多或过大，超出了浏览器的存储限制。请尝试移除一些自定义字体、头像框或清空聊天记录。');
+         const now = Date.now();
+         if (now - lastAlertTimeRef.current > 120000) {
+            setShowQuotaToast(true);
+            lastAlertTimeRef.current = now;
+            setTimeout(() => setShowQuotaToast(false), 5000);
+         }
       }
     }
   }, [appState]);
@@ -1627,6 +1635,16 @@ NSFW设定(18+)：${selectedChar.nsfw}
 
   return (
     <div className="fixed inset-0 bg-[#f8f8f8] flex items-center justify-center font-sans selection:bg-pink-50/30 overflow-hidden">
+      <AnimatePresence>
+        {showQuotaToast && (
+          <motion.div 
+            initial={{ opacity: 0, y: -50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+            className="fixed top-12 left-1/2 -translate-x-1/2 z-[9999] bg-red-500/90 text-white px-6 py-3 rounded-full shadow-2xl backdrop-blur-md font-bold text-sm"
+          >
+            存储空间不足！请前往设置或相册删除一些图片等数据
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Phone Frame Wrapper */}
         <div className={cn(
           "relative transition-all duration-500 ease-in-out overflow-hidden flex flex-col",

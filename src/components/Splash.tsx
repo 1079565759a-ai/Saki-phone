@@ -54,7 +54,7 @@ export default function Splash({ onComplete }: { onComplete: () => void }) {
             transition={{ duration: 4, ease: "easeOut" }}
           >
             {/* Soft Radial Mist */}
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,235,238,0.4)_0%,rgba(24df,235,238,0)_70%)] blur-2xl" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,235,238,0.4)_0%,rgba(245,235,238,0)_70%)] blur-2xl" />
             
             {/* Subtle Cherry Petals falling simulation */}
             {Array.from({ length: 12 }).map((_, i) => (
